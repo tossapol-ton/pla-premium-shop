@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { E2E_ADMIN_PASSWORD } from "../playwright.config";
 
 // ---------- random test data ----------
 const FIRST_NAMES = ["สมชาย", "สมหญิง", "วิภา", "ธนา", "กมล", "ปรีชา", "อรุณี", "ศักดิ์ชัย"];
@@ -115,8 +116,12 @@ test("customer orders 3 products and the order appears in admin", async ({ page 
   expect(await stockOf(page, "tote")).toBe(stockBefore.tote - 1);
   expect(await stockOf(page, "polo")).toBe(stockBefore.polo - 2);
 
-  // 6) Admin > คำสั่งซื้อ shows the new order.
+  // 6) Admin requires login, then คำสั่งซื้อ shows the new order.
   await page.goto("/admin");
+  await expect(page).toHaveURL(/\/admin\/login$/);
+  await page.getByLabel("รหัสผ่าน").fill(E2E_ADMIN_PASSWORD);
+  await page.getByRole("button", { name: "เข้าสู่ระบบ" }).click();
+  await expect(page).toHaveURL(/\/admin$/);
   await page.getByRole("tab", { name: /คำสั่งซื้อ/ }).click();
   const row = page.locator(`[data-testid="order-row"][data-order-number="${orderNumber}"]`).filter({ visible: true });
   await expect(row).toBeVisible();
@@ -125,4 +130,32 @@ test("customer orders 3 products and the order appears in admin", async ({ page 
   await expect(row).toContainText("฿1,910");
   await expect(row).toContainText("รอชำระเงิน");
   await expect(row.locator("td").nth(3)).toHaveText("4");
+});
+
+test("admin pages and admin API need a login", async ({ page, request }) => {
+  // Signed-out visitors are sent to the login page.
+  await page.goto("/admin");
+  await expect(page).toHaveURL(/\/admin\/login$/);
+
+  // Wrong password is rejected.
+  await page.getByLabel("รหัสผ่าน").fill("not-the-password");
+  await page.getByRole("button", { name: "เข้าสู่ระบบ" }).click();
+  // (Next.js' own route announcer also has role="alert", so match by text.)
+  await expect(page.getByText("รหัสผ่านไม่ถูกต้อง")).toBeVisible();
+  await expect(page).toHaveURL(/\/admin\/login$/);
+
+  // Admin API without a session cookie -> 401; shopper API stays public.
+  expect((await request.get("/api/orders")).status()).toBe(401);
+  const update = await request.put("/api/products/umbrella", {
+    data: { name: "x", description: "", price: 1, stock: 1, tag: null, options: [] },
+  });
+  expect(update.status()).toBe(401);
+  expect((await request.get("/api/products")).status()).toBe(200);
+
+  // After logging in, the session cookie unlocks the admin API; logout ends it.
+  const login = await request.post("/api/admin/session", { data: { password: E2E_ADMIN_PASSWORD } });
+  expect(login.status()).toBe(204);
+  expect((await request.get("/api/orders")).status()).toBe(200);
+  expect((await request.delete("/api/admin/session")).status()).toBe(204);
+  expect((await request.get("/api/orders")).status()).toBe(401);
 });

@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { jsonError, readJson } from "@/lib/api";
+import { isAdminRequest } from "@/lib/admin-auth";
 import { createOrder, listOrders, OrderConflictError } from "@/lib/orders";
 import { orderCreateSchema, toIssues } from "@/lib/validation";
 
-// GET /api/orders  (admin — no auth yet)
+// GET /api/orders  (admin only)
 export async function GET() {
+  if (!(await isAdminRequest())) return jsonError(401, "กรุณาเข้าสู่ระบบ Admin");
   const orders = await listOrders();
   return NextResponse.json({ orders });
 }

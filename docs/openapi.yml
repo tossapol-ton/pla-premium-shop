@@ -7,13 +7,15 @@ info:
     All product data, prices and stock levels are mock values.
 
     Money amounts are whole Thai baht (THB) as integers.
-    There is **no authentication yet** — the admin endpoints (`PUT /products/{id}`,
-    `GET /orders`) are open. Add auth before deploying anywhere public.
+
+    Admin endpoints (`PUT /products/{id}`, `GET /orders`) need the `pla_admin`
+    session cookie from `POST /admin/session` (single shared password from the
+    `ADMIN_PASSWORD` env var). Shopper endpoints are public.
 servers:
   - url: http://localhost:3000/api
     description: Local dev server
 
-# No authentication yet (MVP). Every operation is public — see README "What is still mock".
+# Public by default; admin operations declare `adminSession` below.
 security: []
 
 tags:
@@ -21,6 +23,8 @@ tags:
     description: Merchandise catalogue (sample data).
   - name: orders
     description: Checkout and the admin order list.
+  - name: admin
+    description: Admin login session.
 
 paths:
   /products:
@@ -72,7 +76,9 @@ paths:
     put:
       tags: [products]
       operationId: updateProduct
-      summary: Update a product (admin, no auth yet)
+      summary: Update a product (admin)
+      security:
+        - adminSession: []
       description: |
         Replaces the editable fields of a product. `id` and `category` are not editable.
         An empty `tag` removes the badge. An empty `options` list is stored as `["มาตรฐาน"]`.
@@ -95,6 +101,8 @@ paths:
                     $ref: "#/components/schemas/Product"
         "400":
           $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
 
@@ -102,7 +110,9 @@ paths:
     get:
       tags: [orders]
       operationId: listOrders
-      summary: List orders, newest first (admin, no auth yet)
+      summary: List orders, newest first (admin)
+      security:
+        - adminSession: []
       responses:
         "200":
           description: Orders with their line items.
@@ -116,6 +126,8 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/Order"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
     post:
       tags: [orders]
       operationId: createOrder
@@ -153,7 +165,63 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /admin/session:
+    post:
+      tags: [admin]
+      operationId: adminLogin
+      summary: Log in to admin
+      description: |
+        Checks the password against the `ADMIN_PASSWORD` env var and sets an
+        HttpOnly `pla_admin` cookie valid for 8 hours. Changing the password ends all sessions.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [password]
+              properties:
+                password:
+                  type: string
+                  minLength: 1
+                  maxLength: 200
+      responses:
+        "204":
+          description: Logged in; `Set-Cookie` carries the session.
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: "`pla_admin=<expiry>.<signature>; HttpOnly; SameSite=Lax; Path=/`"
+        "401":
+          description: Wrong password.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: Admin login disabled because `ADMIN_PASSWORD` is not set.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      tags: [admin]
+      operationId: adminLogout
+      summary: Log out of admin
+      responses:
+        "204":
+          description: Session cookie cleared.
+
 components:
+  securitySchemes:
+    adminSession:
+      type: apiKey
+      in: cookie
+      name: pla_admin
+      description: Session cookie set by `POST /admin/session`.
+
   parameters:
     ProductId:
       name: id
@@ -164,6 +232,12 @@ components:
         type: string
 
   responses:
+    Unauthorized:
+      description: Admin login required.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
     NotFound:
       description: Resource not found.
       content:

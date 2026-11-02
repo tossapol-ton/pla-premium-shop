@@ -33,6 +33,20 @@ function toDraft(product: Product): Draft {
 
 type SaveState = { kind: "idle" } | { kind: "saving" } | { kind: "saved" } | { kind: "error"; message: string };
 
+function LogoutButton() {
+  const router = useRouter();
+  async function logout() {
+    await fetch("/api/admin/session", { method: "DELETE" }).catch(() => null);
+    router.replace("/admin/login");
+    router.refresh();
+  }
+  return (
+    <button type="button" onClick={logout} className={`${buttonSecondary} ${buttonMd}`}>
+      ออกจากระบบ
+    </button>
+  );
+}
+
 export function AdminPanel({ products, orders }: { products: Product[]; orders: Order[] }) {
   const [tab, setTab] = useState<Tab>("products");
   const tabs: { id: Tab; label: string }[] = [
@@ -50,23 +64,26 @@ export function AdminPanel({ products, orders }: { products: Product[]; orders: 
           </span>
           <h1 className="m-0 text-[30px] font-bold text-navy-900">จัดการสินค้าและคำสั่งซื้อ</h1>
         </div>
-        <div role="tablist" aria-label="ส่วนของ Admin" className="flex gap-1.5 rounded-panel bg-subtle p-1">
-          {tabs.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              role="tab"
-              id={`tab-${t.id}`}
-              aria-selected={tab === t.id}
-              aria-controls={`panel-${t.id}`}
-              onClick={() => setTab(t.id)}
-              className={`min-h-10 rounded-[9px] px-[18px] text-sm font-bold ${
-                tab === t.id ? "bg-white text-navy-600 shadow-card" : "text-muted hover:text-navy-600"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-3">
+          <div role="tablist" aria-label="ส่วนของ Admin" className="flex gap-1.5 rounded-panel bg-subtle p-1">
+            {tabs.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                role="tab"
+                id={`tab-${t.id}`}
+                aria-selected={tab === t.id}
+                aria-controls={`panel-${t.id}`}
+                onClick={() => setTab(t.id)}
+                className={`min-h-10 rounded-[9px] px-[18px] text-sm font-bold ${
+                  tab === t.id ? "bg-white text-navy-600 shadow-card" : "text-muted hover:text-navy-600"
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+          <LogoutButton />
         </div>
       </div>
 
@@ -133,6 +150,10 @@ function ProductsTab({ products }: { products: Product[] }) {
         body: JSON.stringify(parsed.data),
       });
       const body: unknown = await response.json().catch(() => null);
+      if (response.status === 401) {
+        router.replace("/admin/login");
+        return;
+      }
       if (!response.ok) {
         const message =
           typeof body === "object" && body !== null && "error" in body && typeof body.error === "string"
