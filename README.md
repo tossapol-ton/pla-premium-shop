@@ -11,21 +11,34 @@
 | รายละเอียดสินค้า | `/products/[id]` | เลือกสี/ไซซ์, ปรับจำนวน (ไม่เกินสต็อก), ใส่ตะกร้า |
 | ตะกร้า | `/cart` | เพิ่ม/ลด/ลบรายการ, ยอดรวม, ไปหน้าชำระเงิน |
 | ชำระเงิน | `/checkout` | ที่อยู่จัดส่ง (บังคับทุกช่อง), วิธีจัดส่ง, วิธีชำระเงิน, ยืนยันคำสั่งซื้อ |
-| Admin | `/admin` | แท็บ "สินค้า" แก้ไขสินค้า · แท็บ "คำสั่งซื้อ" ดูรายการคำสั่งซื้อ |
+| Admin | `/admin` | ต้องเข้าสู่ระบบด้วยรหัสผ่าน · แท็บ "สินค้า" แก้ไขสินค้า · แท็บ "คำสั่งซื้อ" ดูรายการคำสั่งซื้อ |
 
 ## Stack
 
-Next.js 16 (App Router) · TypeScript · Tailwind CSS v4 · Prisma 6 + SQLite · zod · Playwright
+Next.js 16 (App Router) · TypeScript · Tailwind CSS v4 · Prisma 6 + PostgreSQL (Supabase) · zod · Playwright · Vercel
 
 API: REST under `/api/*`, described in [`docs/openapi.yml`](docs/openapi.yml) (OpenAPI 3.1).
 
-## Setup
+## Deploy (Supabase + Vercel)
 
-Requires Node.js 20+ and npm.
+ทำผ่านเบราว์เซอร์ทั้งหมด ไม่ต้องติดตั้งอะไรในเครื่อง — ดูคู่มือทีละขั้นที่
+**[`docs/deploy.md`](docs/deploy.md)** (มี checklist ตรวจรับและวิธีแก้ปัญหา)
+
+## Local development
+
+Requires Node.js 20+, npm and a PostgreSQL database (local Postgres, or a separate Supabase
+project for development — **not** the production one).
 
 ```bash
 npm install
 ```
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env`: set `DATABASE_URL` and `DIRECT_URL` (for local Postgres both can be
+`postgresql://postgres:postgres@localhost:5432/pla_dev`) and `ADMIN_PASSWORD`.
 
 ```bash
 npx prisma migrate dev
@@ -39,11 +52,10 @@ npx prisma db seed
 npm run dev
 ```
 
-Open http://localhost:3000.
+Open http://localhost:3000. Admin: http://localhost:3000/admin (password = `ADMIN_PASSWORD`).
 
-`npx prisma migrate dev` creates `prisma/dev.db` and also runs the seed on first creation.
-`npx prisma db seed` **wipes** all products and orders and loads the 8 sample products again —
-use it any time to reset the shop.
+`npx prisma db seed` **wipes** all products and orders and loads the 8 sample products again.
+`npm run db:bootstrap` only inserts the sample products when the table is empty (used on deploy).
 
 ### Tests
 
@@ -55,11 +67,15 @@ npx playwright install chromium
 npx playwright test
 ```
 
-The e2e test (`e2e-test/order.spec.ts`) starts its own dev server on port 3100 with a separate
-database (`prisma/e2e.db`, reset on every run), so it never touches your dev data. It adds 3
-products to the cart (2 from the grid, 1 from the product page with size L × 2), checks the cart
-total, fills the checkout form with random data, confirms the order, checks stock was
-decremented, and asserts the order appears in **Admin → คำสั่งซื้อ**.
+The tests start their own dev server on port 3100 against a **separate database that they wipe**:
+by default `postgresql://postgres:postgres@localhost:5432/pla_e2e` (create it with
+`createdb pla_e2e`), or set `E2E_DATABASE_URL`. The config refuses Supabase URLs so tests can never
+wipe production.
+
+| Test | What it checks |
+| --- | --- |
+| customer orders 3 products… | Product images load; adds 3 products (2 from the grid, polo size L × 2 from the product page); cart total ฿1,820; empty-form errors; random address; express + COD total ฿1,910; order number `PLA-<year>-<5 digits>` and status รอชำระเงิน; stock decremented; admin login; order row in **Admin → คำสั่งซื้อ** |
+| admin pages and admin API need a login | `/admin` redirects to login; wrong password rejected; `GET /api/orders` and `PUT /api/products/{id}` return 401 without a session, 200 with one, 401 again after logout |
 
 Other checks: `npm run build`, `npm run lint`, `npx tsc --noEmit`.
 
@@ -74,12 +90,15 @@ Other checks: `npm run build`, `npm run lint`, `npx tsc --noEmit`.
   negative), and creates the order with number `PLA-<year>-<5-digit running number>` and status
   `รอชำระเงิน`. Out of stock → HTTP 409 with a Thai message shown on the checkout page.
 - Shipping: มาตรฐาน 3–5 วัน ฿50 / ด่วน 1–2 วัน ฿90. Payment: PromptPay QR / เก็บเงินปลายทาง.
+- **Admin login:** one shared password (`ADMIN_PASSWORD`). Logging in sets an HttpOnly, signed
+  session cookie (8 hours). `proxy.ts` redirects signed-out visitors from `/admin`; the admin API
+  routes and the admin page also check the session themselves.
 
 ## What is still mock / not done
 
 | Area | Status |
 | --- | --- |
-| **Authentication** | **None.** `/admin`, `PUT /api/products/{id}` and `GET /api/orders` are open to anyone who can reach the server. Add login + role check before any shared deployment. |
+| **Authentication** | **Basic only.** One shared admin password, no individual accounts, roles, audit log or rate limiting. Replace with real accounts (e.g. Supabase Auth) before real use. Shoppers do not log in. |
 | **Payment** | No real payment. "PromptPay QR" only records the choice; no QR is generated and no money moves. Every order stays `รอชำระเงิน`. |
 | **Product images** | Illustrations (SVG) drawn in the Claude Design prototype, stored in `public/products/` and linked by `Product.imageUrl`. They are not product photos — the UI says so. No image upload yet; admin cannot change images. A product with no `imageUrl` falls back to the brand-mark placeholder. |
 | **Product data** | Sample products, prices and stock from the prototype. |
@@ -87,8 +106,8 @@ Other checks: `npm run build`, `npm run lint`, `npx tsc --noEmit`.
 | Product management | Edit only — no create/delete, no category editing. The prototype's "คืนค่าสินค้าทั้งหมด" button is replaced by `npx prisma db seed`. |
 | Customer accounts | None; no order history or tracking page for customers. |
 | Notifications | No email/SMS confirmation. |
-| Personal data | Recipient name, phone and address are stored in plain text in SQLite. Before real use, review PDPA requirements (consent, retention, access control). |
-| Database | SQLite file for local development. For deployment (e.g. Vercel) switch to Postgres/Supabase — change `provider` in `prisma/schema.prisma`, set `DATABASE_URL` in `.env.local` / the host's env vars, and create a new migration. |
+| Personal data | Recipient name, phone and address are stored in plain text in Supabase (Singapore — data leaves Thailand). Testers must use made-up data. Before real use, review PDPA requirements (consent, cross-border transfer, retention, access control). |
+| Database | PostgreSQL. Production on Supabase (Singapore region) with Row Level Security enabled so Supabase's Data API cannot read the tables. No backups configured beyond Supabase's plan defaults. |
 
 ## Brand
 

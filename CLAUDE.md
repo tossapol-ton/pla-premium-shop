@@ -9,7 +9,8 @@ Claude Design prototype. **All products, prices and stock are mock data.**
 
 - **Next.js 16** (App Router, Turbopack, `cacheComponents` + `partialPrefetching` on) + **TypeScript** (strict)
 - **Tailwind CSS v4** — brand tokens live in `app/globals.css` `@theme` (default Tailwind colours are cleared)
-- **Prisma 6 + SQLite** — schema `prisma/schema.prisma`, DB file `prisma/dev.db` (gitignored)
+- **Prisma 6 + PostgreSQL** — Supabase in production, any Postgres locally; schema `prisma/schema.prisma`
+- **Vercel** hosting — build runs `npm run vercel-build`; step-by-step in `docs/deploy.md`
 - **zod** for request validation (`lib/validation.ts`)
 - **Playwright** e2e tests in `e2e-test/`
 - npm only (no yarn/pnpm)
@@ -18,13 +19,15 @@ Claude Design prototype. **All products, prices and stock are mock data.**
 
 ```bash
 npm install                 # also runs `prisma generate` (postinstall)
-npx prisma migrate dev      # create/apply migrations to prisma/dev.db
+cp .env.example .env        # then fill DATABASE_URL, DIRECT_URL, ADMIN_PASSWORD
+npx prisma migrate dev      # create/apply migrations
 npx prisma db seed          # WIPES products + orders, re-seeds sample products
+npm run db:bootstrap        # inserts sample products only if the table is empty
 npm run dev                 # http://localhost:3000
 npm run build               # production build (must pass before pushing)
 npm run lint
 npx tsc --noEmit
-npx playwright test         # e2e; uses its own prisma/e2e.db on port 3100
+npx playwright test         # e2e on port 3100; WIPES the pla_e2e database (or E2E_DATABASE_URL)
 ```
 
 First-time Playwright on a new machine: `npx playwright install chromium`.
@@ -37,7 +40,9 @@ app/
   products/[id]/page.tsx      /products/x  detail (options, qty stepper)
   cart/page.tsx               /cart
   checkout/page.tsx           /checkout    address + shipping + payment, creates order
-  admin/page.tsx              /admin       tabs: สินค้า (edit) / คำสั่งซื้อ (table)
+  admin/page.tsx              /admin       tabs: สินค้า (edit) / คำสั่งซื้อ (table); login required
+  admin/login/                /admin/login single-password login form
+  api/admin/session/route.ts  POST login (sets cookie), DELETE logout
   api/products/...            GET list, GET/PUT one
   api/orders/route.ts         GET list, POST create
 components/                   shared UI (SiteHeader, Badge, ProductImage, ui.ts class recipes)
@@ -46,9 +51,12 @@ lib/
   products.ts, orders.ts      server data access (Prisma); always `await connection()` first
   validation.ts               zod schemas shared by API and forms
   cart.ts                     client cart in localStorage key `pla.cart`
+  admin-auth.ts               signed session cookie for admin (ADMIN_PASSWORD)
+proxy.ts                      redirects signed-out visitors from /admin (Next 16 "proxy" = old middleware)
 public/products/              product illustrations (SVG, from the Claude Design prototype)
 docs/openapi.yml              API contract — update it FIRST when changing an endpoint
-prisma/                       schema, migrations, seed.ts
+prisma/                       schema, migrations, sample-products.ts, seed.ts (wipe), bootstrap.ts (if empty)
+docs/deploy.md                Supabase + Vercel guide (Thai)
 e2e-test/                     Playwright specs
 ```
 
@@ -72,4 +80,9 @@ e2e-test/                     Playwright specs
   no emoji.
 - **Tests:** with Cache Components, Next keeps previous routes mounted but hidden
   (React `<Activity>`), so in Playwright scope `getByTestId` with `.filter({ visible: true })`.
-- `.env` holds only non-secret defaults and is committed; secrets go in `.env.local`.
+- **Secrets:** `.env` is gitignored; `.env.example` documents every variable. Never commit
+  connection strings or passwords. Never run `prisma db seed` or the e2e tests against Supabase.
+- **Admin auth:** every admin Route Handler calls `isAdminRequest()` itself — `proxy.ts` only
+  redirects pages. New admin endpoints must do the same and declare `adminSession` in OpenAPI.
+- **Migrations:** create with `npx prisma migrate dev --name <change>`; never edit an applied
+  migration. Supabase-only SQL (e.g. RLS) goes in a hand-written migration.
