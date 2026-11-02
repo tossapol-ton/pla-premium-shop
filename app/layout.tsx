@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { Noto_Sans_Thai } from "next/font/google";
+import { BagDrawer } from "@/components/BagDrawer";
+import { SiteFooter } from "@/components/SiteFooter";
+import { SiteHeader } from "@/components/SiteHeader";
 import "./globals.css";
 
 const notoSansThai = Noto_Sans_Thai({
@@ -21,7 +24,12 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="th" className={notoSansThai.variable}>
-      <body className="min-h-screen">{children}</body>
+      <body className="flex min-h-screen flex-col">
+        <SiteHeader />
+        <div className="flex-1">{children}</div>
+        <SiteFooter />
+        <BagDrawer />
+      </body>
     </html>
   );
 }

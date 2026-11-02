@@ -1,39 +1,71 @@
+import Link from "next/link";
 import { Suspense } from "react";
-import { SiteHeader } from "@/components/SiteHeader";
-import { SampleDataNote } from "@/components/SampleDataNote";
 import { LoadingPanel } from "@/components/LoadingPanel";
-import { ProductCatalog } from "@/app/_components/ProductCatalog";
-import { listProducts } from "@/lib/products";
+import { ProductCard } from "@/components/ProductCard";
+import { SampleDataNote } from "@/components/SampleDataNote";
+import { pill } from "@/components/ui";
+import { Showcase } from "@/app/_components/Showcase";
+import { listAllProductsCached, listCategories } from "@/lib/products";
+import { categoryHref } from "@/lib/shop";
 
-async function CatalogLoader() {
-  const products = await listProducts();
-  return <ProductCatalog products={products} />;
+async function ShowcaseLoader() {
+  const [products, categories] = await Promise.all([listAllProductsCached(), listCategories()]);
+  return <Showcase products={products} categories={categories} />;
 }
 
-export default function HomePage() {
+async function Catalog({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const [params, products, categories] = await Promise.all([searchParams, listAllProductsCached(), listCategories()]);
+  const requested = typeof params.cat === "string" ? params.cat : null;
+  const active = requested && categories.includes(requested) ? requested : null;
+  const shown = active ? products.filter((p) => p.category === active) : products;
+  const filters: { label: string; href: string; selected: boolean }[] = [
+    { label: "ทั้งหมด", href: "/#shop", selected: active === null },
+    ...categories.map((c) => ({ label: c, href: categoryHref(c), selected: active === c })),
+  ];
+
+  return (
+    <section id="shop" aria-labelledby="shop-title" className="flex flex-col gap-5">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <h2 id="shop-title" className="m-0 text-[28px] leading-9 font-bold text-navy-600">
+            {active ?? "สินค้าทั้งหมด"}
+          </h2>
+          <p className="m-0 text-sm text-muted">แสดง {shown.length} รายการ</p>
+        </div>
+        <nav aria-label="กรองตามหมวด" className="flex flex-wrap gap-2">
+          {filters.map((f) => (
+            <Link
+              key={f.label}
+              href={f.href}
+              aria-current={f.selected ? "true" : undefined}
+              className={`inline-flex min-h-11 items-center rounded-pill border px-4 text-sm font-bold no-underline ${pill(f.selected)}`}
+            >
+              {f.label}
+            </Link>
+          ))}
+        </nav>
+      </div>
+      <ul className="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(min(340px,100%),1fr))] gap-6 p-0">
+        {shown.map((product) => (
+          <li key={product.id}>
+            <ProductCard product={product} />
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+export default function HomePage({ searchParams }: PageProps<"/">) {
   return (
     <>
-      <SiteHeader active="shop" />
-
-      <section className="bg-hero text-white">
-        <div className="mx-auto flex max-w-[1180px] flex-col gap-3.5 px-4 pt-14 pb-16 sm:px-8">
-          <span className="inline-flex items-center gap-2.5 text-xs font-bold tracking-[0.14em] text-white/80 uppercase">
-            <span aria-hidden="true" className="h-0.5 w-6 bg-orange-500" />
-            PhillipLife Premium Collection
-          </span>
-          <h1 className="m-0 max-w-[720px] text-3xl leading-tight font-bold tracking-[-0.01em] sm:text-[44px]">
-            ของพรีเมียมคุณภาพ ในแบบของ PhillipLife
-          </h1>
-          <p className="m-0 max-w-[620px] text-[17px] leading-relaxed text-white/80">
-            ของใช้และของขวัญติดแบรนด์ สำหรับมอบให้ลูกค้า คู่ค้า และทีมงาน
-          </p>
-        </div>
-      </section>
-
-      <main className="mx-auto flex max-w-[1180px] flex-col gap-6 px-4 pt-8 pb-16 sm:px-8">
-        <SampleDataNote />
+      <SampleDataNote />
+      <main className="mx-auto flex max-w-[1200px] flex-col gap-6 px-4 pt-6 sm:px-6">
+        <Suspense fallback={<LoadingPanel label="กำลังโหลด…" />}>
+          <ShowcaseLoader />
+        </Suspense>
         <Suspense fallback={<LoadingPanel label="กำลังโหลดสินค้า…" />}>
-          <CatalogLoader />
+          <Catalog searchParams={searchParams} />
         </Suspense>
       </main>
     </>

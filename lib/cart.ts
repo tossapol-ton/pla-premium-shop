@@ -133,7 +133,7 @@ export type ResolvedLine = CartLine & {
  * no longer exists are dropped (and reported in `unavailable`).
  */
 export function resolveCart(
-  lines: CartLine[],
+  lines: readonly CartLine[],
   products: {
     id: string;
     name: string;
@@ -167,4 +167,47 @@ export function resolveCart(
     itemCount: resolved.reduce((sum, line) => sum + line.quantity, 0),
     subtotal: resolved.reduce((sum, line) => sum + line.lineTotal, 0),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Bag drawer (the slide-in cart panel). Separate tiny store so any page can
+// open it after adding to the cart, and the header button can toggle it.
+
+export type BagState = {
+  open: boolean;
+  /** The line just added, shown as "เพิ่มลงตะกร้าแล้ว"; null when opened from the header. */
+  justAdded: CartLine | null;
+};
+
+const BAG_CLOSED: BagState = { open: false, justAdded: null };
+let bagState: BagState = BAG_CLOSED;
+const bagListeners = new Set<() => void>();
+
+function setBag(next: BagState): void {
+  bagState = next;
+  for (const listener of bagListeners) listener();
+}
+
+function subscribeBag(listener: () => void): () => void {
+  bagListeners.add(listener);
+  return () => bagListeners.delete(listener);
+}
+
+export function useBag(): BagState {
+  return useSyncExternalStore(subscribeBag, () => bagState, () => BAG_CLOSED);
+}
+
+export function openBag(justAdded: CartLine | null = null): void {
+  setBag({ open: true, justAdded });
+}
+
+export function closeBag(): void {
+  setBag(BAG_CLOSED);
+}
+
+/** Adds to the cart and opens the Bag drawer. Returns the units actually added. */
+export function addToBag(productId: string, option: string, quantity: number, stock: number): number {
+  const added = addToCart(productId, option, quantity, stock);
+  openBag(added > 0 ? { productId, option, quantity: added } : null);
+  return added;
 }

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { connection } from "next/server";
 import type { Product as ProductRow } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -60,3 +61,12 @@ export async function updateProduct(id: string, input: ProductUpdateInput): Prom
   });
   return toProduct(row);
 }
+
+/** Distinct categories in display order. Deduplicated per request (header + footer + page). */
+export const listCategories = cache(async (): Promise<string[]> => {
+  const products = await listAllProductsCached();
+  return Array.from(new Set(products.map((p) => p.category)));
+});
+
+/** All products, deduplicated per request. */
+export const listAllProductsCached = cache(async (): Promise<Product[]> => listProducts());

@@ -7,6 +7,8 @@ type ProductImageProps = {
   alt?: string;
   size?: "sm" | "md" | "lg";
   className?: string;
+  /** No placeholder background (the image sits on a ground the caller provides). */
+  bare?: boolean;
 };
 
 const markSize = { sm: 28, md: 44, lg: 80 } as const;
@@ -17,10 +19,11 @@ const markHeight = (width: number) => Math.round((width * 120) / 125);
 const ILLUSTRATION_WIDTH = 400;
 const ILLUSTRATION_HEIGHT = 300;
 
-export function ProductImage({ src, alt = "", size = "md", className = "" }: ProductImageProps) {
+export function ProductImage({ src, alt = "", size = "md", className = "", bare = false }: ProductImageProps) {
+  const ground = bare ? "" : "bg-placeholder";
   if (src) {
     return (
-      <div className={`flex items-center justify-center bg-placeholder ${className}`}>
+      <div className={`flex items-center justify-center ${ground} ${className}`}>
         <Image
           src={src}
           alt={alt}
@@ -34,7 +37,7 @@ export function ProductImage({ src, alt = "", size = "md", className = "" }: Pro
 
   return (
     <div
-      className={`flex flex-col items-center justify-center gap-2.5 bg-placeholder ${className}`}
+      className={`flex flex-col items-center justify-center gap-2.5 ${ground} ${className}`}
       role="img"
       aria-label={alt || "ยังไม่มีรูปสินค้า"}
     >

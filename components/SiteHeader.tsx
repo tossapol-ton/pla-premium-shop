@@ -1,39 +1,52 @@
 import Image from "next/image";
 import Link from "next/link";
-import { CartLink } from "@/components/CartLink";
+import { Suspense } from "react";
+import { CartButton } from "@/components/CartButton";
+import { MobileMenu } from "@/components/MobileMenu";
+import { listCategories } from "@/lib/products";
+import { categoryHref } from "@/lib/shop";
 
-type Section = "shop" | "admin" | "cart" | "checkout" | "none";
-
-export function SiteHeader({ active = "none" }: { active?: Section }) {
-  const navItem = (selected: boolean) =>
-    `rounded-lg px-3.5 py-2.5 text-sm no-underline ${
-      selected ? "bg-navy-100 font-bold text-navy-600" : "text-body hover:bg-subtle hover:text-navy-600"
-    }`;
-
+/** Slim, translucent, sticky header: logo · categories · bag. No Admin link (staff use /admin). */
+export function SiteHeader() {
   return (
-    <header className="flex flex-wrap items-center justify-between gap-4 border-b border-line bg-white px-4 py-4 sm:px-8">
-      <Link href="/" aria-label="PLA Premium Shop หน้าแรก" className="flex items-center gap-3.5 no-underline">
-        <Image src="/logo-navy.png" alt="PhillipLife" width={75} height={28} priority />
-        <span className="border-l border-line pl-3.5 text-[15px] font-bold text-navy-900">Premium Shop</span>
-      </Link>
-      <nav aria-label="เมนูหลัก" className="flex flex-wrap items-center gap-1">
-        <Link href="/" aria-current={active === "shop" ? "page" : undefined} className={navItem(active === "shop")}>
-          สินค้าทั้งหมด
+    <header className="bg-frosted sticky top-0 z-30 border-b border-line">
+      <div className="mx-auto flex min-h-[52px] max-w-[1200px] items-center justify-between gap-4 px-4 sm:px-6">
+        <Link href="/" aria-label="PLA Premium Shop หน้าแรก" className="flex min-h-11 shrink-0 items-center gap-2.5 no-underline">
+          <Image src="/logo-navy.png" alt="PhillipLife" width={59} height={22} loading="eager" />
+          <span className="text-[13px] font-bold text-body">Premium Shop</span>
         </Link>
-        {/*
-          Plain <a>, not <Link>: a client-side prefetch made while signed out
-          caches proxy.ts's redirect to /admin/login, which would keep sending
-          the user back to the login page after they sign in.
-        */}
-        <a
-          href="/admin"
-          aria-current={active === "admin" ? "page" : undefined}
-          className={navItem(active === "admin")}
-        >
-          Admin
-        </a>
-        <CartLink active={active === "cart" || active === "checkout"} />
-      </nav>
+        <Suspense fallback={<div className="hidden flex-1 md:block" />}>
+          <DesktopCategoryNav />
+        </Suspense>
+        <div className="flex items-center">
+          <CartButton />
+          <Suspense fallback={<span className="inline-block h-11 w-11 md:hidden" />}>
+            <MobileMenuLoader />
+          </Suspense>
+        </div>
+      </div>
     </header>
   );
+}
+
+async function DesktopCategoryNav() {
+  const categories = await listCategories();
+  return (
+    <nav aria-label="หมวดสินค้า" className="hidden flex-1 flex-wrap justify-center gap-x-6 text-[13px] md:flex">
+      {categories.map((category) => (
+        <Link
+          key={category}
+          href={categoryHref(category)}
+          className="inline-flex min-h-11 items-center text-body no-underline hover:text-navy-600"
+        >
+          {category}
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
+async function MobileMenuLoader() {
+  const categories = await listCategories();
+  return <MobileMenu categories={categories} />;
 }
