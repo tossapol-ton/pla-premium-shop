@@ -1,26 +1,94 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+ * PhillipLife design system tokens as the Tailwind theme.
+ * Default Tailwind colours are cleared so only brand colours can be used.
+ * Rules: navy is primary; orange is an accent for badges and keylines only —
+ * never orange text on white. No emoji.
+ */
+@theme {
+  --color-*: initial;
+  --color-white: #ffffff;
+  --color-black: #000000;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  /* Navy */
+  --color-navy-900: #001129; /* deepest navy, headings */
+  --color-navy-800: #001b47; /* deep navy surfaces */
+  --color-navy-700: #00245f;
+  --color-navy-600: #00317b; /* PRIMARY */
+  --color-navy-500: #0a45a0; /* primary hover */
+  --color-navy-400: #2a63c0;
+  --color-navy-200: #9db6de;
+  --color-navy-100: #d6e1f2; /* selected / info surfaces */
+  --color-ink-800: #12151b;
+
+  /* Orange accent */
+  --color-orange-600: #c96f00;
+  --color-orange-500: #eb8600; /* PRIMARY accent */
+  --color-orange-400: #ff9e26;
+  --color-orange-200: #ffd39a;
+  --color-orange-100: #fff0dc;
+  --color-orange-ink: #5a3500; /* text on orange-100 notes */
+
+  /* Neutrals */
+  --color-page: #f4f6f9; /* page background */
+  --color-subtle: #e9ecf1; /* subtle surface */
+  --color-line: #d9dee6; /* borders */
+  --color-line-strong: #c2c9d4;
+  --color-gray-500: #8a93a3;
+  --color-muted: #595959; /* muted text */
+  --color-body: #232733; /* body text */
+
+  /* Feedback */
+  --color-danger: #b42318;
+  --color-danger-50: #fef3f2;
+
+  /* Radii */
+  --radius-card: 18px;
+  --radius-btn: 10px;
+  --radius-panel: 12px;
+  --radius-pill: 999px;
+
+  /* Soft navy-tinted shadows */
+  --shadow-card: 0 1px 2px rgba(0, 17, 41, 0.06), 0 1px 3px rgba(0, 17, 41, 0.08);
+  --shadow-raised: 0 4px 12px rgba(0, 17, 41, 0.08), 0 2px 4px rgba(0, 17, 41, 0.06);
+  --shadow-lifted: 0 18px 40px rgba(0, 17, 41, 0.14);
+
+  /* Motion */
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Arial for Latin glyphs; Thai falls through to Noto Sans Thai (next/font). */
+  --font-sans: Arial, var(--font-noto-thai), "Noto Sans Thai", system-ui, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@utility bg-hero {
+  background-image: linear-gradient(115deg, #12151b 0%, #001b47 55%, #0a3a7a 100%);
+}
+
+@utility bg-placeholder {
+  background-image: linear-gradient(160deg, #ffffff 0%, #e9ecf1 100%);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
   }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  body {
+    @apply bg-page text-body font-sans antialiased;
+  }
+  a {
+    @apply text-navy-600 hover:text-navy-500;
+  }
+  :where(a, button, input, textarea, select, [tabindex]):focus-visible {
+    outline: 2px solid var(--color-orange-500);
+    outline-offset: 2px;
+  }
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
 }
