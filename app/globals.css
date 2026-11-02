@@ -1,10 +1,13 @@
 @import "tailwindcss";
 
 /*
- * PhillipLife design system tokens as the Tailwind theme.
- * Default Tailwind colours are cleared so only brand colours can be used.
- * Rules: navy is primary; orange is an accent for badges and keylines only —
- * never orange text on white. No emoji.
+ * Design tokens from the "PLA Shop" design system (PhillipLife storefront),
+ * as the Tailwind theme. Default Tailwind colours are cleared so only brand
+ * colours can be used.
+ * Rules: navy is the brand colour for headings, links and selected states.
+ * Orange (`orange-500`) is the ONE call-to-action fill per view, always with
+ * navy text on it (never white, never orange text on white — use
+ * `accent-text` for orange words). Pill buttons, flat 16px cards, no emoji.
  */
 @theme {
   --color-*: initial;
@@ -13,47 +16,56 @@
   --color-transparent: transparent;
   --color-current: currentColor;
 
-  /* Navy */
-  --color-navy-900: #001129; /* deepest navy, headings */
-  --color-navy-800: #001b47; /* deep navy surfaces */
+  /* Navy (brand) */
+  --color-navy-900: #001129; /* deepest navy */
+  --color-navy-800: #001b47;
   --color-navy-700: #00245f;
-  --color-navy-600: #00317b; /* PRIMARY */
-  --color-navy-500: #0a45a0; /* primary hover */
+  --color-navy-600: #00317a; /* brand: headings, links, selected borders, text on orange */
+  --color-navy-500: #0a45a0; /* hover */
   --color-navy-400: #2a63c0;
   --color-navy-200: #9db6de;
-  --color-navy-100: #d6e1f2; /* selected / info surfaces */
+  --color-navy-100: #d6e1f2;
+  --color-brand-deep: #00204f; /* footer and dark showcase ground */
+  --color-brand-soft: #e6edf8; /* image areas, selected chips, secondary buttons */
+  --color-sky: #9dbbf0; /* links on brand-deep */
+  --color-footer-ink: #e3eaf7; /* body text on brand-deep */
   --color-ink-800: #12151b;
 
-  /* Orange accent */
+  /* Orange (accent) */
   --color-orange-600: #c96f00;
-  --color-orange-500: #eb8600; /* PRIMARY accent */
-  --color-orange-400: #ff9e26;
+  --color-orange-500: #f7941d; /* primary call-to-action fill; text on it is navy-600 */
+  --color-orange-400: #ffa94a; /* primary hover */
   --color-orange-200: #ffd39a;
-  --color-orange-100: #fff0dc;
-  --color-orange-ink: #5a3500; /* text on orange-100 notes */
+  --color-orange-100: #fff3e0; /* notice ground */
+  --color-orange-ink: #5a3500; /* text on orange-100 */
+  --color-accent-text: #b45f00; /* orange words/marks on white only */
 
   /* Neutrals */
-  --color-page: #f4f6f9; /* page background */
-  --color-subtle: #e9ecf1; /* subtle surface */
-  --color-line: #d9dee6; /* borders */
-  --color-line-strong: #c2c9d4;
+  --color-page: #f4f6fa; /* page background */
+  --color-subtle: #e9ecf1;
+  --color-line: #d8dee9; /* hairline borders (decorative) */
+  --color-line-strong: #8a94a6; /* edges of inputs, chips, steppers (3:1) */
   --color-gray-500: #8a93a3;
-  --color-muted: #595959; /* muted text */
-  --color-body: #232733; /* body text */
+  --color-muted: #4a5568; /* secondary text */
+  --color-body: #1b2433; /* body text */
 
   /* Feedback */
-  --color-danger: #b42318;
-  --color-danger-50: #fef3f2;
+  --color-success: #0b6b3a;
+  --color-danger: #9a3b00;
+  --color-danger-50: #fff4ec;
 
   /* Radii */
-  --radius-card: 18px;
-  --radius-btn: 10px;
-  --radius-panel: 12px;
-  --radius-pill: 999px;
+  --radius-card: 16px; /* product cards, cart rows, summary */
+  --radius-section: 20px; /* large page sections and showcase tiles */
+  --radius-panel: 12px; /* image areas, info boxes */
+  --radius-btn: 8px; /* inputs and small rectangular controls */
+  --radius-chip: 6px; /* option chips */
+  --radius-pill: 999px; /* call-to-action buttons, filter pills, discs */
 
-  /* Soft navy-tinted shadows */
+  /* Shadows: cards are flat; lift on hover only */
   --shadow-card: 0 1px 2px rgba(0, 17, 41, 0.06), 0 1px 3px rgba(0, 17, 41, 0.08);
   --shadow-raised: 0 4px 12px rgba(0, 17, 41, 0.08), 0 2px 4px rgba(0, 17, 41, 0.06);
+  --shadow-hover: 0 8px 24px rgba(0, 49, 122, 0.16);
   --shadow-lifted: 0 18px 40px rgba(0, 17, 41, 0.14);
 
   /* Motion */
@@ -70,7 +82,13 @@
 }
 
 @utility bg-placeholder {
-  background-image: linear-gradient(160deg, #ffffff 0%, #e9ecf1 100%);
+  background-color: #e6edf8;
+}
+
+/* Translucent "frosted" bars (sticky header, buy bars). */
+@utility bg-frosted {
+  background-color: rgba(255, 255, 255, 0.86);
+  @apply backdrop-blur-[20px] backdrop-saturate-[1.8];
 }
 
 @layer base {
@@ -81,14 +99,24 @@
     @apply bg-page text-body font-sans antialiased;
   }
   a {
-    @apply text-navy-600 hover:text-navy-500;
+    @apply text-navy-600 hover:text-brand-deep;
   }
-  :where(a, button, input, textarea, select, [tabindex]):focus-visible {
-    outline: 2px solid var(--color-orange-500);
+  :where(a, button, input, textarea, select, summary, [tabindex]):focus-visible {
+    outline: 3px solid var(--color-navy-600);
     outline-offset: 2px;
+  }
+  html {
+    scroll-padding-top: 72px; /* anchors land below the sticky header */
   }
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]) {
     cursor: pointer;
+  }
+}
+
+/* Phones: leave room for the product page's fixed bottom buy bar. */
+@media (width < 48rem) {
+  body:has([data-mobile-buybar]) {
+    padding-bottom: 88px;
   }
 }
