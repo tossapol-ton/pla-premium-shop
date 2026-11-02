@@ -8,7 +8,8 @@ Claude Design prototype. **All products, prices and stock are mock data.**
 ## Stack
 
 - **Next.js 16** (App Router, Turbopack, `cacheComponents` + `partialPrefetching` on) + **TypeScript** (strict)
-- **Tailwind CSS v4** — brand tokens live in `app/globals.css` `@theme` (default Tailwind colours are cleared)
+- **Tailwind CSS v4** — tokens from the "PLA Shop" design system live in `app/globals.css` `@theme`
+  (default Tailwind colours are cleared). Look and feel: Apple-Store-style storefront in PhillipLife colours.
 - **Prisma 6 + PostgreSQL** — Supabase in production, any Postgres locally; schema `prisma/schema.prisma`
 - **Vercel** hosting — build runs `npm run vercel-build`; step-by-step in `docs/deploy.md`
 - **zod** for request validation (`lib/validation.ts`)
@@ -36,8 +37,12 @@ First-time Playwright on a new machine: `npx playwright install chromium`.
 
 ```
 app/
-  page.tsx                    /            product list (hero, category pills, grid)
-  products/[id]/page.tsx      /products/x  detail (options, qty stepper)
+  layout.tsx                  SiteHeader + SiteFooter + BagDrawer on every page
+  page.tsx                    /            showcase tiles, category circles, grid filtered by ?cat=
+  _components/Showcase.tsx    home showcase (featured ids: HOME_SHOWCASE in lib/shop.ts)
+  products/[id]/page.tsx      /products/x  server loader + details + related products
+  products/[id]/ProductDetail.tsx          swatches/size chips, stock status, sticky buy bar,
+                                           phone bottom bar + option sheet (<dialog>)
   cart/page.tsx               /cart
   checkout/page.tsx           /checkout    address + shipping + payment, creates order
   admin/page.tsx              /admin       tabs: สินค้า (edit) / คำสั่งซื้อ (table); login required
@@ -45,12 +50,15 @@ app/
   api/admin/session/route.ts  POST login (sets cookie), DELETE logout
   api/products/...            GET list, GET/PUT one
   api/orders/route.ts         GET list, POST create
-components/                   shared UI (SiteHeader, Badge, ProductImage, ui.ts class recipes)
+components/                   shared UI: SiteHeader (frosted, categories, no Admin link), SiteFooter,
+                              MobileMenu, CartButton, BagDrawer (<dialog>), BuyButton, ProductCard,
+                              ProductImage, icons.tsx, ui.ts class recipes
 lib/
   shop.ts                     DTO types + constants (shipping, payment, status labels) — client-safe
   products.ts, orders.ts      server data access (Prisma); always `await connection()` first
   validation.ts               zod schemas shared by API and forms
-  cart.ts                     client cart in localStorage key `pla.cart`
+  cart.ts                     client cart in localStorage key `pla.cart` + Bag drawer state
+                              (addToBag = add + open drawer)
   admin-auth.ts               signed session cookie for admin (ADMIN_PASSWORD)
   admin-actions.ts            Server Actions: loginAction / logoutAction (used by the UI)
 proxy.ts                      redirects signed-out visitors from /admin (Next 16 "proxy" = old middleware)
@@ -75,10 +83,17 @@ e2e-test/                     Playwright specs
 - **Money** is whole THB (`Int`). Format with `formatBaht()` from `lib/format.ts`.
   Prices for orders are always read from the DB, never trusted from the client.
 - **API first:** change `docs/openapi.yml`, then `lib/validation.ts`, then the route handler.
-- **Brand rules (PhillipLife DS):** navy `navy-600` primary (hover `navy-500`); orange is an
-  accent for badges/keylines only — never orange text on white; cards `rounded-card` (18px),
-  buttons `rounded-btn` (10px); shadows `shadow-card` / `shadow-raised`; hero `bg-hero`;
-  no emoji.
+- **Brand rules (PLA Shop design system):** navy `navy-600` for headings, links and selected
+  states. `orange-500` is the ONE call-to-action fill per view (`buttonPrimary`), always with
+  navy text — never white on orange, never orange text on white (orange words use
+  `accent-text`). Secondary actions are `buttonSecondary` (brand-soft pill). Pill buttons;
+  flat cards `rounded-card` (16px) with a `line` hairline, `shadow-hover` on hover only;
+  sections `rounded-section` (20px); option chips 2px navy edge on `brand-soft` when selected
+  (`pill()`); focus ring 3px navy. Frosted sticky bars use `bg-frosted`. Circle "discs" in
+  orange/navy at 28–90% are the decorative motif. No emoji.
+- **Buying:** `BuyButton` adds single-option products straight to the Bag drawer; products with
+  more than one option link to the product page so the shopper picks colour/size.
+  `stockStatus()` shows "เหลือเพียง N ชิ้น" at ≤ `LOW_STOCK_THRESHOLD` (10).
 - **Tests:** with Cache Components, Next keeps previous routes mounted but hidden
   (React `<Activity>`), so in Playwright scope `getByTestId` with `.filter({ visible: true })`.
 - **Secrets:** `.env` is gitignored; `.env.example` documents every variable. Never commit
@@ -88,7 +103,8 @@ e2e-test/                     Playwright specs
 - **Crossing the login boundary:** log in/out through the Server Actions in
   `lib/admin-actions.ts` (set cookie + `redirect()`), never `fetch` + `router.push`. A `<Link>`
   to `/admin` prefetched while signed out caches proxy.ts's redirect, and a client navigation
-  after login would reuse it (bug fixed 2026-11). The header's Admin link is a plain `<a>`.
+  after login would reuse it (bug fixed 2026-11). The shop has no link to `/admin` at all;
+  if you add one, make it a plain `<a>`.
   Prefetching only happens in production, which is why e2e runs on `next build && next start`.
 - **Migrations:** create with `npx prisma migrate dev --name <change>`; never edit an applied
   migration. Supabase-only SQL (e.g. RLS) goes in a hand-written migration.

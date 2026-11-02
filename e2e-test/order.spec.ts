@@ -36,57 +36,86 @@ async function stockOf(page: Page, productId: string): Promise<number> {
   return body.product.stock;
 }
 
-test("customer orders 3 products and the order appears in admin", async ({ page }) => {
+const card = (page: Page, productId: string) =>
+  page.locator(`[data-testid="product-card"][data-product-id="${productId}"]`).filter({ visible: true }).first();
+
+const bag = (page: Page) => visibleTestId(page, "bag-drawer");
+
+test("customer orders 3 products via the Bag drawer and the order appears in admin", async ({ page }) => {
   const stockBefore = {
-    umbrella: await stockOf(page, "umbrella"),
-    tote: await stockOf(page, "tote"),
+    notebook: await stockOf(page, "notebook"),
+    giftset: await stockOf(page, "giftset"),
     polo: await stockOf(page, "polo"),
   };
 
-  // 1) Product list: add two products straight from the grid.
+  // 1) Home: showcase + grid with illustrations, sample-data note.
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "สินค้าทั้งหมด" })).toBeVisible();
-  await expect(page.getByText("ข้อมูลตัวอย่าง")).toBeVisible();
-
-  // Every product card shows its illustration and the file actually loads.
+  await expect(page.getByText("ข้อมูลตัวอย่าง").first()).toBeVisible();
   const cardImages = page.locator('[data-testid="product-card"] img[src^="/products/"]').filter({ visible: true });
   await expect(cardImages).toHaveCount(8);
   const loaded = await cardImages.evaluateAll((imgs) =>
     imgs.every((img) => img instanceof HTMLImageElement && img.complete && img.naturalWidth > 0),
   );
   expect(loaded).toBe(true);
+  // No Admin link in the shop header any more.
+  await expect(page.getByRole("banner").getByRole("link", { name: "Admin" })).toHaveCount(0);
 
-  await page.getByRole("button", { name: "ใส่ตะกร้า ร่มพับอัตโนมัติ PLA" }).click();
-  await expect(page.getByRole("status")).toContainText("ร่มพับอัตโนมัติ PLA");
-  await page.getByRole("button", { name: "ใส่ตะกร้า กระเป๋าผ้า Tote" }).click();
+  // 2) Single-option products go straight into the Bag drawer.
+  await card(page, "notebook").getByRole("button", { name: "ซื้อ ชุดสมุดโน้ตและปากกา" }).click();
+  await expect(bag(page)).toBeVisible();
+  await expect(bag(page).getByRole("heading", { name: "เพิ่มลงตะกร้าแล้ว" })).toBeVisible();
+  await expect(visibleTestId(page, "bag-just-added")).toContainText("ชุดสมุดโน้ตและปากกา");
+  await bag(page).getByRole("button", { name: "ปิดตะกร้า" }).click();
+  await expect(bag(page)).toHaveCount(0);
+
+  await card(page, "giftset").getByRole("button", { name: "ซื้อ ชุดของขวัญพรีเมียม" }).click();
+  await expect(visibleTestId(page, "bag-line")).toHaveCount(2);
+  await expect(visibleTestId(page, "bag-subtotal")).toHaveText("฿1,580");
+  await page.keyboard.press("Escape"); // native <dialog> closes on Esc
+  await expect(bag(page)).toHaveCount(0);
   await expect.poll(() => cartCount(page)).toBe(2);
 
-  // Sold-out product cannot be added.
-  await expect(page.getByRole("button", { name: "พาวเวอร์แบงก์ 10,000 mAh สินค้าหมด" })).toBeDisabled();
+  // Sold-out product cannot be bought.
+  await expect(card(page, "powerbank").getByRole("button", { name: "พาวเวอร์แบงก์ 10,000 mAh สินค้าหมด" })).toBeDisabled();
 
-  // 2) Product page: pick size L, quantity 2.
-  await page.getByRole("link", { name: "ดูรายละเอียด เสื้อโปโล PLA" }).click();
+  // 3) Multi-option products open the product page to choose a colour/size.
+  await card(page, "umbrella").getByRole("link", { name: "ซื้อ ร่มพับอัตโนมัติ PLA (เลือกตัวเลือก)" }).click();
+  await expect(page).toHaveURL(/\/products\/umbrella$/);
+  await page.getByRole("button", { name: "สีส้ม" }).click();
+  await expect(page.getByRole("button", { name: "สีส้ม" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("group", { name: /สี/ }).first()).toContainText("ส้ม");
+
+  // 4) Header category link filters the home grid.
+  await page.getByRole("navigation", { name: "หมวดสินค้า" }).getByRole("link", { name: "เสื้อผ้า" }).click();
+  await expect(page).toHaveURL(/cat=/);
+  await expect(page.getByRole("heading", { level: 2, name: "เสื้อผ้า" })).toBeVisible();
+  await expect(page.locator('[data-testid="product-card"]').filter({ visible: true })).toHaveCount(1);
+
+  // 5) Product page: pick size L, quantity 2, add → Bag drawer.
+  await card(page, "polo").getByRole("link", { name: "ดูรายละเอียด เสื้อโปโล PLA" }).first().click();
   await expect(page.getByRole("heading", { level: 1, name: "เสื้อโปโล PLA" })).toBeVisible();
   await expect(page.getByRole("img", { name: "เสื้อโปโล PLA" })).toHaveAttribute("src", "/products/polo.svg");
+  await expect(visibleTestId(page, "stock-status")).toHaveText("มีสินค้า พร้อมส่ง");
   await page.getByRole("button", { name: "L", exact: true }).click();
   await page.getByRole("button", { name: "เพิ่มจำนวน" }).click();
   await expect(visibleTestId(page, "qty")).toHaveText("2");
-  await page.getByRole("button", { name: /^ใส่ตะกร้า/ }).click();
-  await expect(page.getByRole("status")).toContainText("เพิ่ม 2 ชิ้น (L)");
+  await page.getByRole("button", { name: "เพิ่มลงตะกร้า · ฿1,180" }).click();
+  await expect(visibleTestId(page, "bag-just-added")).toContainText("ตัวเลือก: L · จำนวน 2");
+  await expect(visibleTestId(page, "bag-line")).toHaveCount(3);
+  // 290 + 1,290 + 590×2 = 2,760
+  await expect(visibleTestId(page, "bag-subtotal")).toHaveText("฿2,760");
   await expect.poll(() => cartCount(page)).toBe(4);
 
-  // 3) Cart: three distinct lines.
-  await visibleTestId(page, "cart-link").click();
+  // 6) Drawer → cart page.
+  await bag(page).getByRole("link", { name: "ดูตะกร้า" }).click();
   await expect(page).toHaveURL(/\/cart$/);
   await expect(visibleTestId(page, "cart-line")).toHaveCount(3);
-  // 390 + 250 + 590*2 = 1,820
-  await expect(visibleTestId(page, "cart-subtotal")).toHaveText("฿1,820");
+  await expect(visibleTestId(page, "cart-subtotal")).toHaveText("฿2,760");
 
-  // 4) Checkout with random address data.
+  // 7) Checkout with random address data.
   await page.getByRole("link", { name: "ไปหน้าชำระเงิน" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "ชำระเงิน" })).toBeVisible();
-
-  // Submitting empty shows required-field errors.
   await page.getByRole("button", { name: /^ยืนยันคำสั่งซื้อ/ }).click();
   await expect(page.getByText("กรุณากรอกชื่อผู้รับ")).toBeVisible();
 
@@ -98,30 +127,23 @@ test("customer orders 3 products and the order appears in admin", async ({ page 
   await page.getByRole("textbox", { name: "รหัสไปรษณีย์", exact: true }).fill(address.postalCode);
   await page.getByLabel(/ด่วน/).check();
   await page.getByLabel(/เก็บเงินปลายทาง/).check();
-  // 1,820 + express 90
-  await expect(visibleTestId(page, "checkout-total")).toHaveText("฿1,910");
-
+  // 2,760 + express 90
+  await expect(visibleTestId(page, "checkout-total")).toHaveText("฿2,850");
   await page.getByRole("button", { name: /^ยืนยันคำสั่งซื้อ/ }).click();
 
-  // 5) Success screen with a PLA-<year>-<5 digits> order number; cart is cleared.
+  // 8) Success: PLA-<year>-<5 digits>, cart cleared, stock decremented.
   const success = visibleTestId(page, "order-success");
   await expect(success).toContainText("สั่งซื้อสำเร็จ");
   const orderNumber = await visibleTestId(page, "order-number").innerText();
   expect(orderNumber).toMatch(/^PLA-\d{4}-\d{5}$/);
   await expect(success).toContainText("รอชำระเงิน");
   await expect.poll(() => cartCount(page)).toBe(0);
-
-  // Stock was decremented in the database.
-  expect(await stockOf(page, "umbrella")).toBe(stockBefore.umbrella - 1);
-  expect(await stockOf(page, "tote")).toBe(stockBefore.tote - 1);
+  expect(await stockOf(page, "notebook")).toBe(stockBefore.notebook - 1);
+  expect(await stockOf(page, "giftset")).toBe(stockBefore.giftset - 1);
   expect(await stockOf(page, "polo")).toBe(stockBefore.polo - 2);
 
-  // 6) Admin requires login, then คำสั่งซื้อ shows the new order.
-  //    Reach it the way a user does — via the header after browsing while
-  //    signed out — so a stale prefetched redirect would be caught.
-  await page.getByRole("link", { name: "กลับไปหน้าร้าน" }).click();
-  await expect(page.getByRole("heading", { name: "สินค้าทั้งหมด" })).toBeVisible();
-  await page.getByRole("link", { name: "Admin", exact: true }).filter({ visible: true }).click();
+  // 9) Staff open /admin directly (no link in the shop), log in, see the order.
+  await page.goto("/admin");
   await expect(page).toHaveURL(/\/admin\/login$/);
   await page.getByLabel("รหัสผ่าน").fill(E2E_ADMIN_PASSWORD);
   await page.getByRole("button", { name: "เข้าสู่ระบบ" }).click();
@@ -131,15 +153,48 @@ test("customer orders 3 products and the order appears in admin", async ({ page 
   await expect(row).toBeVisible();
   await expect(row).toContainText(address.recipientName);
   await expect(row).toContainText("ปลายทาง");
-  await expect(row).toContainText("฿1,910");
+  await expect(row).toContainText("฿2,850");
   await expect(row).toContainText("รอชำระเงิน");
   await expect(row.locator("td").nth(3)).toHaveText("4");
 
-  // Logout ends the session.
   await page.getByRole("button", { name: "ออกจากระบบ" }).click();
   await expect(page).toHaveURL(/\/admin\/login$/);
   await page.goto("/admin");
   await expect(page).toHaveURL(/\/admin\/login$/);
+});
+
+test.describe("phone layout", () => {
+  test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+
+  test("full-screen menu, option sheet and no sideways scrolling", async ({ page }) => {
+    await page.goto("/");
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+    // Desktop category bar is hidden; the menu button opens the full-screen menu.
+    await expect(page.getByRole("navigation", { name: "หมวดสินค้า" })).toBeHidden();
+    await page.getByRole("button", { name: "เปิดเมนู" }).click();
+    const menu = page.getByRole("navigation", { name: "เมนูหลัก" });
+    await expect(menu).toBeVisible();
+    await menu.getByRole("link", { name: "เสื้อผ้า" }).click();
+    await expect(menu).toBeHidden();
+    await expect(page).toHaveURL(/cat=/);
+
+    // Product with sizes: bottom bar opens the option sheet.
+    await page.goto("/products/polo");
+    await page.getByRole("button", { name: "เลือกไซซ์และซื้อ" }).click();
+    const sheet = visibleTestId(page, "option-sheet");
+    await expect(sheet).toBeVisible();
+    await sheet.getByRole("button", { name: "M", exact: true }).click();
+    await sheet.getByRole("button", { name: "เพิ่มลงตะกร้า · ฿590" }).click();
+    await expect(sheet).toHaveCount(0);
+    await expect(visibleTestId(page, "bag-just-added")).toContainText("ตัวเลือก: M · จำนวน 1");
+    await page.keyboard.press("Escape");
+
+    // Single-option product: bottom bar adds directly.
+    await page.goto("/products/giftset");
+    await page.getByRole("button", { name: "เพิ่มลงตะกร้า", exact: true }).click();
+    await expect(visibleTestId(page, "bag-just-added")).toContainText("ชุดของขวัญพรีเมียม");
+    await expect(visibleTestId(page, "bag-line")).toHaveCount(2);
+  });
 });
 
 test("admin pages and admin API need a login", async ({ page, request }) => {
