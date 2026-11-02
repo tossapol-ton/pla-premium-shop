@@ -1,0 +1,65 @@
+// PLA Premium Shop — database schema (PostgreSQL; Supabase in production)
+//
+// DATABASE_URL — used by the app at runtime. On Supabase: the pooled
+//                connection (port 6543, ?pgbouncer=true&connection_limit=1).
+// DIRECT_URL   — used by `prisma migrate`. On Supabase: the session/direct
+//                connection (port 5432). Locally both can be the same URL.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Product {
+  id          String      @id // slug, e.g. "umbrella"
+  name        String
+  description String
+  price       Int // whole THB
+  category    String
+  options     String[] // e.g. ["กรมท่า", "ส้ม"]; never empty (defaults to ["มาตรฐาน"])
+  stock       Int
+  tag         String? // badge text, e.g. "ขายดี" / "ใหม่"
+  imageUrl    String? // site-relative path under public/, e.g. "/products/umbrella.svg"
+  sortOrder   Int         @default(0)
+  createdAt   DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime    @updatedAt @db.Timestamptz(3)
+  orderItems  OrderItem[]
+}
+
+model Order {
+  id             Int         @id @default(autoincrement())
+  number         String      @unique // PLA-<year>-<5 digits>
+  status         String      @default("PENDING_PAYMENT") // see lib/orders.ts ORDER_STATUS
+  recipientName  String
+  phone          String
+  address        String
+  province       String
+  postalCode     String
+  shippingMethod String // "standard" | "express"
+  shippingFee    Int
+  paymentMethod  String // "promptpay" | "cod"
+  subtotal       Int
+  total          Int
+  createdAt      DateTime    @default(now()) @db.Timestamptz(3)
+  items          OrderItem[]
+}
+
+model OrderItem {
+  id          Int     @id @default(autoincrement())
+  orderId     Int
+  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product @relation(fields: [productId], references: [id])
+  productName String // snapshot at time of order
+  option      String
+  unitPrice   Int // snapshot, whole THB
+  quantity    Int
+
+  @@index([orderId])
+  @@index([productId])
+}
