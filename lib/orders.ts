@@ -1,7 +1,7 @@
 import { connection } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { parseOptions } from "@/lib/products";
+import { normalizeOptions } from "@/lib/products";
 import {
   isOrderStatus,
   isPaymentMethod,
@@ -101,7 +101,7 @@ export async function createOrder(input: OrderCreateInput): Promise<Order> {
         for (const line of lines.values()) {
           const product = byId.get(line.productId);
           if (!product) throw new OrderConflictError(`ไม่พบสินค้า ${line.productId}`);
-          if (!parseOptions(product.options).includes(line.option)) {
+          if (!normalizeOptions(product.options).includes(line.option)) {
             throw new OrderConflictError(`ตัวเลือก "${line.option}" ของ ${product.name} ไม่มีแล้ว`);
           }
           qtyByProduct.set(product.id, (qtyByProduct.get(product.id) ?? 0) + line.quantity);

@@ -4,17 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { DEFAULT_OPTION, type Product } from "@/lib/shop";
 import type { ProductUpdateInput } from "@/lib/validation";
 
-export function parseOptions(raw: string): string[] {
-  try {
-    const value: unknown = JSON.parse(raw);
-    if (Array.isArray(value)) {
-      const options = value.filter((item): item is string => typeof item === "string" && item.length > 0);
-      if (options.length > 0) return options;
-    }
-  } catch {
-    // fall through to default
-  }
-  return [DEFAULT_OPTION];
+/** Never returns an empty list: products without options sell as "มาตรฐาน". */
+export function normalizeOptions(options: string[]): string[] {
+  const cleaned = options.filter((option) => option.length > 0);
+  return cleaned.length > 0 ? cleaned : [DEFAULT_OPTION];
 }
 
 export function toProduct(row: ProductRow): Product {
@@ -24,7 +17,7 @@ export function toProduct(row: ProductRow): Product {
     description: row.description,
     price: row.price,
     category: row.category,
-    options: parseOptions(row.options),
+    options: normalizeOptions(row.options),
     stock: row.stock,
     tag: row.tag && row.tag.length > 0 ? row.tag : null,
     imageUrl: row.imageUrl && row.imageUrl.length > 0 ? row.imageUrl : null,
@@ -62,7 +55,7 @@ export async function updateProduct(id: string, input: ProductUpdateInput): Prom
       price: input.price,
       stock: input.stock,
       tag: input.tag && input.tag.length > 0 ? input.tag : null,
-      options: JSON.stringify(options.length > 0 ? options : [DEFAULT_OPTION]),
+      options: normalizeOptions(options),
     },
   });
   return toProduct(row);

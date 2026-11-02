@@ -1,14 +1,18 @@
-// PLA Premium Shop — database schema
-// SQLite for local MVP. To move to Supabase/Postgres later, change `provider`
-// to "postgresql" and point DATABASE_URL at the Postgres connection string.
+// PLA Premium Shop — database schema (PostgreSQL; Supabase in production)
+//
+// DATABASE_URL — used by the app at runtime. On Supabase: the pooled
+//                connection (port 6543, ?pgbouncer=true&connection_limit=1).
+// DIRECT_URL   — used by `prisma migrate`. On Supabase: the session/direct
+//                connection (port 5432). Locally both can be the same URL.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Product {
@@ -17,13 +21,13 @@ model Product {
   description String
   price       Int // whole THB
   category    String
-  options     String // JSON-encoded string[] (SQLite has no scalar lists)
+  options     String[] // e.g. ["กรมท่า", "ส้ม"]; never empty (defaults to ["มาตรฐาน"])
   stock       Int
   tag         String? // badge text, e.g. "ขายดี" / "ใหม่"
   imageUrl    String? // site-relative path under public/, e.g. "/products/umbrella.svg"
   sortOrder   Int         @default(0)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  createdAt   DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime    @updatedAt @db.Timestamptz(3)
   orderItems  OrderItem[]
 }
 
@@ -41,7 +45,7 @@ model Order {
   paymentMethod  String // "promptpay" | "cod"
   subtotal       Int
   total          Int
-  createdAt      DateTime    @default(now())
+  createdAt      DateTime    @default(now()) @db.Timestamptz(3)
   items          OrderItem[]
 }
 

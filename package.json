@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "vercel-build": "prisma migrate deploy && tsx prisma/bootstrap.ts && next build",
+    "db:bootstrap": "tsx prisma/bootstrap.ts"
   },
   "dependencies": {
     "@prisma/client": "6.19.3",
