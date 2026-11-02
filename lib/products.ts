@@ -27,6 +27,7 @@ export function toProduct(row: ProductRow): Product {
     options: parseOptions(row.options),
     stock: row.stock,
     tag: row.tag && row.tag.length > 0 ? row.tag : null,
+    imageUrl: row.imageUrl && row.imageUrl.length > 0 ? row.imageUrl : null,
   };
 }
 

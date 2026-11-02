@@ -34,13 +34,13 @@ export function ProductDetail({ product }: { product: Product }) {
   return (
     <div className="flex flex-wrap items-start gap-9">
       <div className="flex min-w-0 flex-[1_1_440px] flex-col gap-3">
-        <ProductImage size="lg" className="h-[320px] rounded-card border border-line sm:h-[460px]" />
-        <div className="grid grid-cols-4 gap-3" aria-hidden="true">
-          <div className="h-[84px] rounded-panel border-2 border-navy-600 bg-subtle" />
-          <div className="h-[84px] rounded-panel border border-line bg-page" />
-          <div className="h-[84px] rounded-panel border border-line bg-page" />
-          <div className="h-[84px] rounded-panel border border-line bg-page" />
-        </div>
+        <ProductImage
+          src={product.imageUrl}
+          alt={product.name}
+          size="lg"
+          className="h-[320px] rounded-card border border-line sm:h-[460px]"
+        />
+        <p className="m-0 text-[13px] text-muted">ภาพประกอบ · สินค้าจริงอาจแตกต่าง</p>
       </div>
 
       <div className="flex min-w-0 flex-[1_1_420px] flex-col gap-5">

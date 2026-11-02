@@ -201,7 +201,7 @@ components:
 
     Product:
       type: object
-      required: [id, name, description, price, category, options, stock, tag]
+      required: [id, name, description, price, category, options, stock, tag, imageUrl]
       properties:
         id:
           type: string
@@ -231,6 +231,13 @@ components:
         tag:
           type: ["string", "null"]
           description: Badge text, e.g. `ขายดี` or `ใหม่`.
+        imageUrl:
+          type: ["string", "null"]
+          description: |
+            Site-relative path of the product illustration (served from `public/`),
+            e.g. `/products/umbrella.svg`. `null` = show the brand placeholder.
+            Illustrations only, not product photos. Not editable via the API yet.
+          examples: ["/products/umbrella.svg"]
 
     ProductUpdate:
       type: object

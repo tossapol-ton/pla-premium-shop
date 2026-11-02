@@ -46,6 +46,7 @@ lib/
   products.ts, orders.ts      server data access (Prisma); always `await connection()` first
   validation.ts               zod schemas shared by API and forms
   cart.ts                     client cart in localStorage key `pla.cart`
+public/products/              product illustrations (SVG, from the Claude Design prototype)
 docs/openapi.yml              API contract — update it FIRST when changing an endpoint
 prisma/                       schema, migrations, seed.ts
 e2e-test/                     Playwright specs

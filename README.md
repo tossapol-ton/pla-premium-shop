@@ -81,7 +81,7 @@ Other checks: `npm run build`, `npm run lint`, `npx tsc --noEmit`.
 | --- | --- |
 | **Authentication** | **None.** `/admin`, `PUT /api/products/{id}` and `GET /api/orders` are open to anyone who can reach the server. Add login + role check before any shared deployment. |
 | **Payment** | No real payment. "PromptPay QR" only records the choice; no QR is generated and no money moves. Every order stays `รอชำระเงิน`. |
-| **Product images** | Placeholders (brand mark on a grey gradient). No image upload. |
+| **Product images** | Illustrations (SVG) drawn in the Claude Design prototype, stored in `public/products/` and linked by `Product.imageUrl`. They are not product photos — the UI says so. No image upload yet; admin cannot change images. A product with no `imageUrl` falls back to the brand-mark placeholder. |
 | **Product data** | Sample products, prices and stock from the prototype. |
 | Order management | Admin can view orders but not change status, cancel or refund (cancel would need to return stock). |
 | Product management | Edit only — no create/delete, no category editing. The prototype's "คืนค่าสินค้าทั้งหมด" button is replaced by `npx prisma db seed`. |
@@ -96,4 +96,7 @@ PhillipLife design system tokens are in the Tailwind theme (`app/globals.css`): 
 `#00317B` (hover `#0A45A0`), deep navy `#001129`/`#001B47`, orange accent `#EB8600` (badges and
 keylines only), greys `#F4F6F9` / `#E9ECF1` / `#D9DEE6`, muted text `#595959`. Arial for Latin with
 Noto Sans Thai for Thai. Card radius 18px, button radius 10px. Logo files in `public/` come from
-the design system.
+the design system; product illustrations in `public/products/` come from the prototype.
+
+To add or replace a product image: put the file in `public/products/`, set `imageUrl` for that
+product in `prisma/seed.ts`, then run `npx prisma db seed`.

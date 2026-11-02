@@ -20,6 +20,7 @@ model Product {
   options     String // JSON-encoded string[] (SQLite has no scalar lists)
   stock       Int
   tag         String? // badge text, e.g. "ขายดี" / "ใหม่"
+  imageUrl    String? // site-relative path under public/, e.g. "/products/umbrella.svg"
   sortOrder   Int         @default(0)
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt

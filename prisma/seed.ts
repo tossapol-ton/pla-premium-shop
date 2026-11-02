@@ -119,6 +119,8 @@ async function main(): Promise<void> {
         options: JSON.stringify(p.options),
         stock: p.stock,
         tag: p.tag,
+        // Illustrations from the Claude Design prototype, stored in public/products/.
+        imageUrl: `/products/${p.id}.svg`,
         sortOrder: index,
       },
     });

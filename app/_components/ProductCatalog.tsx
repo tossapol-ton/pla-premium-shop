@@ -74,7 +74,7 @@ export function ProductCatalog({ products }: { products: Product[] }) {
                   aria-label={`ดูรายละเอียด ${product.name}`}
                   className="relative block no-underline"
                 >
-                  <ProductImage className="h-[180px]" />
+                  <ProductImage src={product.imageUrl} className="h-[180px]" />
                   {product.tag && (
                     <span className="absolute top-3 left-3">
                       <Badge>{product.tag}</Badge>

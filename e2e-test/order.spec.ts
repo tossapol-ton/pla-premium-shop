@@ -47,6 +47,14 @@ test("customer orders 3 products and the order appears in admin", async ({ page 
   await expect(page.getByRole("heading", { name: "สินค้าทั้งหมด" })).toBeVisible();
   await expect(page.getByText("ข้อมูลตัวอย่าง")).toBeVisible();
 
+  // Every product card shows its illustration and the file actually loads.
+  const cardImages = page.locator('[data-testid="product-card"] img[src^="/products/"]').filter({ visible: true });
+  await expect(cardImages).toHaveCount(8);
+  const loaded = await cardImages.evaluateAll((imgs) =>
+    imgs.every((img) => img instanceof HTMLImageElement && img.complete && img.naturalWidth > 0),
+  );
+  expect(loaded).toBe(true);
+
   await page.getByRole("button", { name: "ใส่ตะกร้า ร่มพับอัตโนมัติ PLA" }).click();
   await expect(page.getByRole("status")).toContainText("ร่มพับอัตโนมัติ PLA");
   await page.getByRole("button", { name: "ใส่ตะกร้า กระเป๋าผ้า Tote" }).click();
@@ -58,6 +66,7 @@ test("customer orders 3 products and the order appears in admin", async ({ page 
   // 2) Product page: pick size L, quantity 2.
   await page.getByRole("link", { name: "ดูรายละเอียด เสื้อโปโล PLA" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "เสื้อโปโล PLA" })).toBeVisible();
+  await expect(page.getByRole("img", { name: "เสื้อโปโล PLA" })).toHaveAttribute("src", "/products/polo.svg");
   await page.getByRole("button", { name: "L", exact: true }).click();
   await page.getByRole("button", { name: "เพิ่มจำนวน" }).click();
   await expect(visibleTestId(page, "qty")).toHaveText("2");

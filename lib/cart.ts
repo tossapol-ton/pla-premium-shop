@@ -125,6 +125,7 @@ export type ResolvedLine = CartLine & {
   unitPrice: number;
   lineTotal: number;
   stock: number;
+  imageUrl: string | null;
 };
 
 /**
@@ -133,7 +134,14 @@ export type ResolvedLine = CartLine & {
  */
 export function resolveCart(
   lines: CartLine[],
-  products: { id: string; name: string; price: number; stock: number; options: string[] }[],
+  products: {
+    id: string;
+    name: string;
+    price: number;
+    stock: number;
+    options: string[];
+    imageUrl: string | null;
+  }[],
 ): { lines: ResolvedLine[]; unavailable: CartLine[]; itemCount: number; subtotal: number } {
   const byId = new Map(products.map((product) => [product.id, product]));
   const resolved: ResolvedLine[] = [];
@@ -150,6 +158,7 @@ export function resolveCart(
       unitPrice: product.price,
       lineTotal: product.price * line.quantity,
       stock: product.stock,
+      imageUrl: product.imageUrl,
     });
   }
   return {

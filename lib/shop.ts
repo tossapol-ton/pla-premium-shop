@@ -9,6 +9,7 @@ export type Product = {
   options: string[];
   stock: number;
   tag: string | null;
+  imageUrl: string | null; // e.g. "/products/umbrella.svg"
 };
 
 export const SHIPPING_METHODS = {

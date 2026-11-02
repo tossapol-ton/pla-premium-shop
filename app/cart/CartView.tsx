@@ -62,7 +62,11 @@ export function CartView({ products }: { products: Product[] }) {
                 data-testid="cart-line"
                 className="flex flex-wrap items-center gap-[18px] border-b border-line px-[22px] py-[18px]"
               >
-                <ProductImage size="sm" className="h-[76px] w-[76px] shrink-0 rounded-panel border border-line" />
+                <ProductImage
+                  src={line.imageUrl}
+                  size="sm"
+                  className="h-[76px] w-[76px] shrink-0 rounded-panel border border-line"
+                />
                 <div className="flex min-w-0 flex-[1_1_200px] flex-col gap-1">
                   <Link href={`/products/${line.productId}`} className="text-base font-bold text-navy-900 no-underline">
                     {line.name}
