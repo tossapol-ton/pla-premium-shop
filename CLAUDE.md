@@ -43,6 +43,7 @@ app/
   products/[id]/page.tsx      /products/x  server loader + details + related products
   products/[id]/ProductDetail.tsx          swatches/size chips, stock status, sticky buy bar,
                                            phone bottom bar + option sheet (<dialog>)
+  tech-stack/page.tsx         /tech-stack  static "Tech stack" summary (linked from header, mobile menu, footer)
   cart/page.tsx               /cart
   checkout/page.tsx           /checkout    address + shipping + payment, creates order
   admin/page.tsx              /admin       tabs: สินค้า (edit) / คำสั่งซื้อ (table); login required

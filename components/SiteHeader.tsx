@@ -42,6 +42,10 @@ async function DesktopCategoryNav() {
           {category}
         </Link>
       ))}
+      <span aria-hidden="true" className="my-auto h-4 w-px bg-line" />
+      <Link href="/tech-stack" className="inline-flex min-h-11 items-center text-body no-underline hover:text-navy-600">
+        Tech stack
+      </Link>
     </nav>
   );
 }
