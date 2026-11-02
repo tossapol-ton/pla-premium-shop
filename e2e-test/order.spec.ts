@@ -197,6 +197,27 @@ test.describe("phone layout", () => {
   });
 });
 
+test("Tech stack page is linked from the header, mobile menu and footer", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("navigation", { name: "หมวดสินค้า" }).getByRole("link", { name: "Tech stack" }).click();
+  await expect(page).toHaveURL(/\/tech-stack$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Tech stack" })).toBeVisible();
+  await expect(visibleTestId(page, "stack-item")).toHaveCount(7);
+  for (const label of ["Frontend", "Backend", "Database", "Hosting", "Source code", "Testing", "Design"]) {
+    await expect(page.getByRole("heading", { level: 2, name: label, exact: true })).toBeVisible();
+  }
+  await expect(page.getByText("PostgreSQL", { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("contentinfo").getByRole("link", { name: "Tech stack" })).toBeVisible();
+
+  // Phone: reachable from the full-screen menu.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await page.getByRole("button", { name: "เปิดเมนู" }).click();
+  await page.getByRole("navigation", { name: "เมนูหลัก" }).getByRole("link", { name: "Tech stack" }).click();
+  await expect(page).toHaveURL(/\/tech-stack$/);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});
+
 test("admin pages and admin API need a login", async ({ page, request }) => {
   // Signed-out visitors are sent to the login page.
   await page.goto("/admin");

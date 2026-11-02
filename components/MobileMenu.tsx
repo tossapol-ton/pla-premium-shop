@@ -65,6 +65,12 @@ export function MobileMenu({ categories }: { categories: string[] }) {
               การจัดส่งและการชำระเงิน
             </a>
           </div>
+          <div className="flex flex-col border-t border-line pt-4">
+            <span className="mb-2 text-[13px] text-muted">เกี่ยวกับร้าน</span>
+            <Link href="/tech-stack" onClick={close} className={smallLink}>
+              Tech stack
+            </Link>
+          </div>
         </nav>
       )}
     </div>

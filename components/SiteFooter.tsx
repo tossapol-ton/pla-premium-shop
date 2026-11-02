@@ -45,6 +45,9 @@ export function SiteFooter() {
             </h2>
             <p className="m-0">ของใช้และของขวัญติดแบรนด์ PhillipLife สำหรับลูกค้า คู่ค้า และทีมงาน</p>
             <p className="m-0">นโยบายความเป็นส่วนตัว: [รอลิงก์จากฝ่ายกฎหมาย]</p>
+            <Link href="/tech-stack" className={footerLink}>
+              Tech stack
+            </Link>
           </section>
         </div>
         <div className="flex flex-wrap justify-between gap-2 border-t border-footer-ink/25 pt-4 text-[13px]">
