@@ -30,8 +30,9 @@ export default defineConfig({
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
-    // Fresh schema + sample data, then start the app on a dedicated port.
-    command: `npx prisma migrate deploy && npx prisma db seed && npx next dev --port ${PORT}`,
+    // Fresh schema + sample data, then a PRODUCTION build on a dedicated port.
+    // Production matters: link prefetching (and its caching) only happens there.
+    command: `npx prisma migrate deploy && npx prisma db seed && npx next build && npx next start --port ${PORT}`,
     url: `http://localhost:${PORT}/api/products`,
     env: {
       DATABASE_URL: TEST_DATABASE_URL,
@@ -39,7 +40,7 @@ export default defineConfig({
       ADMIN_PASSWORD: E2E_ADMIN_PASSWORD,
     },
     reuseExistingServer: false,
-    timeout: 180_000,
+    timeout: 300_000,
     stdout: "pipe",
   },
 });

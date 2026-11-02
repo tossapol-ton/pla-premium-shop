@@ -1,49 +1,17 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useActionState } from "react";
 import { buttonLg, buttonPrimary, card, fieldInput, fieldLabel } from "@/components/ui";
+import { loginAction, type LoginState } from "@/lib/admin-actions";
+
+const INITIAL: LoginState = { error: null };
 
 export function LoginForm() {
-  const router = useRouter();
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!password) {
-      setError("กรุณากรอกรหัสผ่าน");
-      return;
-    }
-    setSubmitting(true);
-    setError(null);
-    try {
-      const response = await fetch("/api/admin/session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
-      });
-      if (!response.ok) {
-        const body: unknown = await response.json().catch(() => null);
-        setError(
-          typeof body === "object" && body !== null && "error" in body && typeof body.error === "string"
-            ? body.error
-            : "เข้าสู่ระบบไม่สำเร็จ",
-        );
-        return;
-      }
-      router.replace("/admin");
-      router.refresh();
-    } catch {
-      setError("เชื่อมต่อเซิร์ฟเวอร์ไม่ได้");
-    } finally {
-      setSubmitting(false);
-    }
-  }
+  const [state, formAction, pending] = useActionState(loginAction, INITIAL);
+  const error = state.error;
 
   return (
-    <form onSubmit={handleSubmit} noValidate className={`${card} flex flex-col gap-5 p-6 shadow-raised`}>
+    <form action={formAction} className={`${card} flex flex-col gap-5 p-6 shadow-raised`}>
       <div className="flex flex-col gap-1.5">
         <span className="inline-flex items-center gap-2.5 text-xs font-bold tracking-[0.14em] text-navy-600 uppercase">
           <span aria-hidden="true" className="h-0.5 w-6 bg-orange-500" />
@@ -58,10 +26,10 @@ export function LoginForm() {
         </label>
         <input
           id="admin-password"
+          name="password"
           type="password"
           autoComplete="current-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          required
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? "admin-password-error" : undefined}
           className={fieldInput}
@@ -72,8 +40,8 @@ export function LoginForm() {
           </span>
         )}
       </div>
-      <button type="submit" disabled={submitting} className={`${buttonPrimary} ${buttonLg}`}>
-        {submitting ? "กำลังตรวจสอบ…" : "เข้าสู่ระบบ"}
+      <button type="submit" disabled={pending} className={`${buttonPrimary} ${buttonLg}`}>
+        {pending ? "กำลังตรวจสอบ…" : "เข้าสู่ระบบ"}
       </button>
     </form>
   );

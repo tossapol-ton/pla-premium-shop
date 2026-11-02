@@ -20,13 +20,18 @@ export function SiteHeader({ active = "none" }: { active?: Section }) {
         <Link href="/" aria-current={active === "shop" ? "page" : undefined} className={navItem(active === "shop")}>
           สินค้าทั้งหมด
         </Link>
-        <Link
+        {/*
+          Plain <a>, not <Link>: a client-side prefetch made while signed out
+          caches proxy.ts's redirect to /admin/login, which would keep sending
+          the user back to the login page after they sign in.
+        */}
+        <a
           href="/admin"
           aria-current={active === "admin" ? "page" : undefined}
           className={navItem(active === "admin")}
         >
           Admin
-        </Link>
+        </a>
         <CartLink active={active === "cart" || active === "checkout"} />
       </nav>
     </header>

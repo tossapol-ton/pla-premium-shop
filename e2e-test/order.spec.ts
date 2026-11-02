@@ -117,7 +117,11 @@ test("customer orders 3 products and the order appears in admin", async ({ page 
   expect(await stockOf(page, "polo")).toBe(stockBefore.polo - 2);
 
   // 6) Admin requires login, then คำสั่งซื้อ shows the new order.
-  await page.goto("/admin");
+  //    Reach it the way a user does — via the header after browsing while
+  //    signed out — so a stale prefetched redirect would be caught.
+  await page.getByRole("link", { name: "กลับไปหน้าร้าน" }).click();
+  await expect(page.getByRole("heading", { name: "สินค้าทั้งหมด" })).toBeVisible();
+  await page.getByRole("link", { name: "Admin", exact: true }).filter({ visible: true }).click();
   await expect(page).toHaveURL(/\/admin\/login$/);
   await page.getByLabel("รหัสผ่าน").fill(E2E_ADMIN_PASSWORD);
   await page.getByRole("button", { name: "เข้าสู่ระบบ" }).click();
@@ -130,6 +134,12 @@ test("customer orders 3 products and the order appears in admin", async ({ page 
   await expect(row).toContainText("฿1,910");
   await expect(row).toContainText("รอชำระเงิน");
   await expect(row.locator("td").nth(3)).toHaveText("4");
+
+  // Logout ends the session.
+  await page.getByRole("button", { name: "ออกจากระบบ" }).click();
+  await expect(page).toHaveURL(/\/admin\/login$/);
+  await page.goto("/admin");
+  await expect(page).toHaveURL(/\/admin\/login$/);
 });
 
 test("admin pages and admin API need a login", async ({ page, request }) => {

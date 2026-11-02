@@ -67,14 +67,15 @@ npx playwright install chromium
 npx playwright test
 ```
 
-The tests start their own dev server on port 3100 against a **separate database that they wipe**:
+The tests build and start the app in **production mode** on port 3100 (link prefetching only
+happens in production) against a **separate database that they wipe**:
 by default `postgresql://postgres:postgres@localhost:5432/pla_e2e` (create it with
 `createdb pla_e2e`), or set `E2E_DATABASE_URL`. The config refuses Supabase URLs so tests can never
 wipe production.
 
 | Test | What it checks |
 | --- | --- |
-| customer orders 3 products… | Product images load; adds 3 products (2 from the grid, polo size L × 2 from the product page); cart total ฿1,820; empty-form errors; random address; express + COD total ฿1,910; order number `PLA-<year>-<5 digits>` and status รอชำระเงิน; stock decremented; admin login; order row in **Admin → คำสั่งซื้อ** |
+| customer orders 3 products… | Product images load; adds 3 products (2 from the grid, polo size L × 2 from the product page); cart total ฿1,820; empty-form errors; random address; express + COD total ฿1,910; order number `PLA-<year>-<5 digits>` and status รอชำระเงิน; stock decremented; admin login reached via the header link after browsing; order row in **Admin → คำสั่งซื้อ**; logout |
 | admin pages and admin API need a login | `/admin` redirects to login; wrong password rejected; `GET /api/orders` and `PUT /api/products/{id}` return 401 without a session, 200 with one, 401 again after logout |
 
 Other checks: `npm run build`, `npm run lint`, `npx tsc --noEmit`.
