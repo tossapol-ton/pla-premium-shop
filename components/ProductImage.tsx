@@ -6,6 +6,8 @@ type ProductImageProps = {
 };
 
 const markSize = { sm: 28, md: 44, lg: 80 } as const;
+// brand-mark.png is 125 x 120
+const markHeight = (width: number) => Math.round((width * 120) / 125);
 
 /** Placeholder until real product photos exist. */
 export function ProductImage({ size = "md", className = "" }: ProductImageProps) {
@@ -15,7 +17,13 @@ export function ProductImage({ size = "md", className = "" }: ProductImageProps)
       role="img"
       aria-label="รูปสินค้า (ตัวอย่าง)"
     >
-      <Image src="/brand-mark.png" alt="" width={markSize[size]} height={markSize[size]} className="opacity-35" />
+      <Image
+        src="/brand-mark.png"
+        alt=""
+        width={markSize[size]}
+        height={markHeight(markSize[size])}
+        className="opacity-35"
+      />
       {size !== "sm" && <span className="text-xs text-muted">[รูปสินค้า]</span>}
     </div>
   );
