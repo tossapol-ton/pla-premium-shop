@@ -75,3 +75,54 @@ export function isPaymentMethod(value: string): value is PaymentMethod {
 export function isOrderStatus(value: string): value is OrderStatus {
   return value in ORDER_STATUS;
 }
+
+// ---------------------------------------------------------------------------
+// Presentation helpers (client-safe)
+
+/** Stock at or below this shows "เหลือเพียง N ชิ้น". */
+export const LOW_STOCK_THRESHOLD = 10;
+
+export type StockStatus = { kind: "in" | "low" | "out"; label: string };
+
+export function stockStatus(stock: number): StockStatus {
+  if (stock <= 0) return { kind: "out", label: "สินค้าหมด" };
+  if (stock <= LOW_STOCK_THRESHOLD) return { kind: "low", label: `เหลือเพียง ${stock} ชิ้น` };
+  return { kind: "in", label: "มีสินค้า พร้อมส่ง" };
+}
+
+/** Swatch colours for colour options. Options not listed here render as text chips. */
+export const OPTION_COLORS: Readonly<Record<string, string>> = {
+  กรมท่า: "#00317a",
+  ส้ม: "#f7941d",
+  ขาว: "#ffffff",
+  ครีม: "#f3ead8",
+  เทา: "#8a94a6",
+};
+
+const SIZE_OPTIONS = new Set(["XS", "S", "M", "L", "XL", "XXL", "2XL", "3XL"]);
+
+export type OptionKind = "color" | "size" | "other";
+
+/** What the option list represents, so the UI can say "สี" / "ไซซ์" / "ตัวเลือก". */
+export function optionKind(options: readonly string[]): OptionKind {
+  if (options.length > 0 && options.every((o) => o in OPTION_COLORS)) return "color";
+  if (options.length > 0 && options.every((o) => SIZE_OPTIONS.has(o.toUpperCase()))) return "size";
+  return "other";
+}
+
+export const OPTION_KIND_LABEL: Readonly<Record<OptionKind, string>> = {
+  color: "สี",
+  size: "ไซซ์",
+  other: "ตัวเลือก",
+};
+
+/** Products featured on the home page showcase (by id; missing ids are skipped). */
+export const HOME_SHOWCASE = {
+  hero: "giftset",
+  dark: "polo",
+  duo: ["umbrella", "tumbler"],
+} as const;
+
+export function categoryHref(category: string): string {
+  return `/?cat=${encodeURIComponent(category)}#shop`;
+}

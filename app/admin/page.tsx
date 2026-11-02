@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import { SiteHeader } from "@/components/SiteHeader";
 import { LoadingPanel } from "@/components/LoadingPanel";
 import { AdminPanel } from "@/app/admin/AdminPanel";
 import { isAdminRequest } from "@/lib/admin-auth";
@@ -20,7 +19,6 @@ async function AdminLoader() {
 export default function AdminPage() {
   return (
     <>
-      <SiteHeader active="admin" />
       <main className="mx-auto flex max-w-[1180px] flex-col gap-6 px-4 pt-8 pb-16 sm:px-8">
         <Suspense fallback={<LoadingPanel label="กำลังโหลดข้อมูล Admin…" />}>
           <AdminLoader />

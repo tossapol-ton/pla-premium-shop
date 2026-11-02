@@ -7,11 +7,15 @@
 
 | หน้า | URL | ทำอะไร |
 | --- | --- | --- |
-| รายการสินค้า | `/` | Hero, กรองตามหมวดหมู่, การ์ดสินค้า, ปุ่มใส่ตะกร้า (ปิดเมื่อสินค้าหมด) |
-| รายละเอียดสินค้า | `/products/[id]` | เลือกสี/ไซซ์, ปรับจำนวน (ไม่เกินสต็อก), ใส่ตะกร้า |
+| หน้าแรก | `/` | แบนเนอร์สินค้าเด่น, เลือกตามหมวด, การ์ดสินค้า, กรองหมวดผ่าน URL (`/?cat=…`) |
+| รายละเอียดสินค้า | `/products/[id]` | เลือกสีเป็นวงกลมสี / เลือกไซซ์, จำนวน (ไม่เกินสต็อก), สถานะสต็อก, แถบซื้อติดด้านบน; บนมือถือเลือกผ่านแผงจากด้านล่าง |
+| ตะกร้าแบบ Bag | ทุกหน้า | แผงเลื่อนออกด้านขวาหลังกด "ซื้อ" / ไอคอนตะกร้า: สรุปรายการ, ยอดรวม, ไปชำระเงิน |
 | ตะกร้า | `/cart` | เพิ่ม/ลด/ลบรายการ, ยอดรวม, ไปหน้าชำระเงิน |
 | ชำระเงิน | `/checkout` | ที่อยู่จัดส่ง (บังคับทุกช่อง), วิธีจัดส่ง, วิธีชำระเงิน, ยืนยันคำสั่งซื้อ |
-| Admin | `/admin` | ต้องเข้าสู่ระบบด้วยรหัสผ่าน · แท็บ "สินค้า" แก้ไขสินค้า · แท็บ "คำสั่งซื้อ" ดูรายการคำสั่งซื้อ |
+| Admin | `/admin` | สำหรับเจ้าหน้าที่ (ไม่มีลิงก์บนหน้าร้าน) ต้องเข้าสู่ระบบด้วยรหัสผ่าน · แท็บ "สินค้า" แก้ไขสินค้า · แท็บ "คำสั่งซื้อ" ดูรายการคำสั่งซื้อ |
+
+Design: Apple-Store-style layout in PhillipLife colours, following the "PLA Shop" design system
+(mock on Claude Design: "PLA Premium Shop — Apple-style v2").
 
 ## Stack
 
@@ -75,7 +79,8 @@ wipe production.
 
 | Test | What it checks |
 | --- | --- |
-| customer orders 3 products… | Product images load; adds 3 products (2 from the grid, polo size L × 2 from the product page); cart total ฿1,820; empty-form errors; random address; express + COD total ฿1,910; order number `PLA-<year>-<5 digits>` and status รอชำระเงิน; stock decremented; admin login reached via the header link after browsing; order row in **Admin → คำสั่งซื้อ**; logout |
+| customer orders 3 products via the Bag drawer… | Images load; no Admin link in the shop; notebook + gift set from the grid go straight into the Bag drawer (Esc/close work); umbrella opens its page to pick a colour; header category filters the grid; polo size L × 2 from the product page; drawer subtotal ฿2,760 → cart → checkout with random address, express + COD ฿2,850; order number `PLA-<year>-<5 digits>`, รอชำระเงิน; stock decremented; admin login; order row in **Admin → คำสั่งซื้อ**; logout |
+| phone layout | 390 px wide: no sideways scroll; full-screen menu; polo size chosen in the bottom sheet; single-option product added from the bottom bar |
 | admin pages and admin API need a login | `/admin` redirects to login; wrong password rejected; `GET /api/orders` and `PUT /api/products/{id}` return 401 without a session, 200 with one, 401 again after logout |
 
 Other checks: `npm run build`, `npm run lint`, `npx tsc --noEmit`.
