@@ -1,0 +1,60 @@
+// PLA Premium Shop — database schema
+// SQLite for local MVP. To move to Supabase/Postgres later, change `provider`
+// to "postgresql" and point DATABASE_URL at the Postgres connection string.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id          String      @id // slug, e.g. "umbrella"
+  name        String
+  description String
+  price       Int // whole THB
+  category    String
+  options     String // JSON-encoded string[] (SQLite has no scalar lists)
+  stock       Int
+  tag         String? // badge text, e.g. "ขายดี" / "ใหม่"
+  sortOrder   Int         @default(0)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  orderItems  OrderItem[]
+}
+
+model Order {
+  id             Int         @id @default(autoincrement())
+  number         String      @unique // PLA-<year>-<5 digits>
+  status         String      @default("PENDING_PAYMENT") // see lib/orders.ts ORDER_STATUS
+  recipientName  String
+  phone          String
+  address        String
+  province       String
+  postalCode     String
+  shippingMethod String // "standard" | "express"
+  shippingFee    Int
+  paymentMethod  String // "promptpay" | "cod"
+  subtotal       Int
+  total          Int
+  createdAt      DateTime    @default(now())
+  items          OrderItem[]
+}
+
+model OrderItem {
+  id          Int     @id @default(autoincrement())
+  orderId     Int
+  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product @relation(fields: [productId], references: [id])
+  productName String // snapshot at time of order
+  option      String
+  unitPrice   Int // snapshot, whole THB
+  quantity    Int
+
+  @@index([orderId])
+  @@index([productId])
+}
