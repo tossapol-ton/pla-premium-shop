@@ -207,6 +207,17 @@ test("Tech stack page is linked from the header, mobile menu and footer", async 
     await expect(page.getByRole("heading", { level: 2, name: label, exact: true })).toBeVisible();
   }
   await expect(page.getByText("PostgreSQL", { exact: true }).first()).toBeVisible();
+  // Every technology tile shows a logo: inline SVG (Simple Icons) or an image file that loaded.
+  const tiles = visibleTestId(page, "stack-tech");
+  await expect(tiles).toHaveCount(14);
+  const logosOk = await tiles.evaluateAll((items) =>
+    items.every((item) => {
+      const svg = item.querySelector("svg path");
+      const img = item.querySelector("img");
+      return Boolean(svg) || (img instanceof HTMLImageElement && img.complete && img.naturalWidth > 0);
+    }),
+  );
+  expect(logosOk).toBe(true);
   await expect(page.getByRole("contentinfo").getByRole("link", { name: "Tech stack" })).toBeVisible();
 
   // Phone: reachable from the full-screen menu.
