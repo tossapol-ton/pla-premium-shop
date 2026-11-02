@@ -6,6 +6,7 @@ import { useState, type FormEvent } from "react";
 import { Badge } from "@/components/Badge";
 import { buttonMd, buttonPrimary, buttonSecondary, card, fieldInput, fieldLabel } from "@/components/ui";
 import { formatBaht, formatThaiDateTime } from "@/lib/format";
+import { logoutAction } from "@/lib/admin-actions";
 import { ORDER_STATUS, PAYMENT_METHODS, type Order, type Product } from "@/lib/shop";
 import { parseOptionsText, productUpdateSchema } from "@/lib/validation";
 
@@ -34,16 +35,12 @@ function toDraft(product: Product): Draft {
 type SaveState = { kind: "idle" } | { kind: "saving" } | { kind: "saved" } | { kind: "error"; message: string };
 
 function LogoutButton() {
-  const router = useRouter();
-  async function logout() {
-    await fetch("/api/admin/session", { method: "DELETE" }).catch(() => null);
-    router.replace("/admin/login");
-    router.refresh();
-  }
   return (
-    <button type="button" onClick={logout} className={`${buttonSecondary} ${buttonMd}`}>
-      ออกจากระบบ
-    </button>
+    <form action={logoutAction}>
+      <button type="submit" className={`${buttonSecondary} ${buttonMd}`}>
+        ออกจากระบบ
+      </button>
+    </form>
   );
 }
 
@@ -151,7 +148,7 @@ function ProductsTab({ products }: { products: Product[] }) {
       });
       const body: unknown = await response.json().catch(() => null);
       if (response.status === 401) {
-        router.replace("/admin/login");
+        router.replace("/admin/login"); // session expired
         return;
       }
       if (!response.ok) {

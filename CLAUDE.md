@@ -27,7 +27,7 @@ npm run dev                 # http://localhost:3000
 npm run build               # production build (must pass before pushing)
 npm run lint
 npx tsc --noEmit
-npx playwright test         # e2e on port 3100; WIPES the pla_e2e database (or E2E_DATABASE_URL)
+npx playwright test         # e2e on a PRODUCTION build, port 3100; WIPES pla_e2e (or E2E_DATABASE_URL)
 ```
 
 First-time Playwright on a new machine: `npx playwright install chromium`.
@@ -52,6 +52,7 @@ lib/
   validation.ts               zod schemas shared by API and forms
   cart.ts                     client cart in localStorage key `pla.cart`
   admin-auth.ts               signed session cookie for admin (ADMIN_PASSWORD)
+  admin-actions.ts            Server Actions: loginAction / logoutAction (used by the UI)
 proxy.ts                      redirects signed-out visitors from /admin (Next 16 "proxy" = old middleware)
 public/products/              product illustrations (SVG, from the Claude Design prototype)
 docs/openapi.yml              API contract — update it FIRST when changing an endpoint
@@ -84,5 +85,10 @@ e2e-test/                     Playwright specs
   connection strings or passwords. Never run `prisma db seed` or the e2e tests against Supabase.
 - **Admin auth:** every admin Route Handler calls `isAdminRequest()` itself — `proxy.ts` only
   redirects pages. New admin endpoints must do the same and declare `adminSession` in OpenAPI.
+- **Crossing the login boundary:** log in/out through the Server Actions in
+  `lib/admin-actions.ts` (set cookie + `redirect()`), never `fetch` + `router.push`. A `<Link>`
+  to `/admin` prefetched while signed out caches proxy.ts's redirect, and a client navigation
+  after login would reuse it (bug fixed 2026-11). The header's Admin link is a plain `<a>`.
+  Prefetching only happens in production, which is why e2e runs on `next build && next start`.
 - **Migrations:** create with `npx prisma migrate dev --name <change>`; never edit an applied
   migration. Supabase-only SQL (e.g. RLS) goes in a hand-written migration.
