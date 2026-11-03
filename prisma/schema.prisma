@@ -63,3 +63,18 @@ model OrderItem {
   @@index([orderId])
   @@index([productId])
 }
+
+/// One row per click on a button or link (see instrumentation-client.ts).
+/// Basic data only: no typed text, no IP, no user agent, no session id.
+model ClickLog {
+  id        Int      @id @default(autoincrement())
+  type      String // "link" | "button" | "tab"
+  label     String // aria-label or visible text, max 80 chars
+  href      String? // link destination (internal path+query, or external origin)
+  page      String // pathname where the click happened
+  disabled  Boolean  @default(false)
+  clickedAt DateTime @db.Timestamptz(3) // client clock
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([createdAt])
+}

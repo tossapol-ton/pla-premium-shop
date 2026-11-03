@@ -11,6 +11,7 @@ if (/supabase\.(co|com)/.test(TEST_DATABASE_URL)) {
 }
 
 export const E2E_ADMIN_PASSWORD = "e2e-admin-password";
+export const E2E_DATABASE_URL_RESOLVED = TEST_DATABASE_URL; // for tests that read the e2e database directly
 
 export default defineConfig({
   testDir: "./e2e-test",

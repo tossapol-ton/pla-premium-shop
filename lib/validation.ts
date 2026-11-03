@@ -52,6 +52,29 @@ export const productUpdateSchema = z
   .strict();
 export type ProductUpdateInput = z.infer<typeof productUpdateSchema>;
 
+// Click log (POST /api/log). Long strings are truncated instead of rejected so a
+// slightly oversized label never makes the whole batch fail.
+export const CLICK_TYPES = ["link", "button", "tab"] as const;
+
+const truncated = (max: number) =>
+  z.string().transform((value) => (value.length > max ? value.slice(0, max) : value));
+
+export const clickEventSchema = z
+  .object({
+    type: z.enum(CLICK_TYPES),
+    label: truncated(80),
+    href: truncated(300).nullable().optional(),
+    page: truncated(200),
+    disabled: z.boolean().optional(),
+    at: z.iso.datetime({ offset: true }),
+  })
+  .strict();
+
+export const clickLogBatchSchema = z
+  .object({ events: z.array(clickEventSchema).min(1, "ไม่มีรายการ").max(20) })
+  .strict();
+export type ClickLogBatchInput = z.infer<typeof clickLogBatchSchema>;
+
 export type FieldIssue = { path: string; message: string };
 
 export function toIssues(error: z.ZodError): FieldIssue[] {

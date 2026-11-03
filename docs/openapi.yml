@@ -25,6 +25,8 @@ tags:
     description: Checkout and the admin order list.
   - name: admin
     description: Admin login session.
+  - name: logs
+    description: Click log written by the browser (basic data only).
 
 paths:
   /products:
@@ -165,6 +167,28 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /log:
+    post:
+      tags: [logs]
+      operationId: logClicks
+      summary: Record button/link clicks
+      description: |
+        Called by `instrumentation-client.ts` with `navigator.sendBeacon`. Public (shoppers are
+        not logged in). Stores type, label, destination, page and time only: never typed text,
+        IP address, user agent or any session id. Strings longer than their limit are truncated.
+        There is no rate limiting yet.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClickLogBatch"
+      responses:
+        "204":
+          description: Stored.
+        "400":
+          $ref: "#/components/responses/ValidationError"
+
   /admin/session:
     post:
       tags: [admin]
@@ -252,6 +276,45 @@ components:
             $ref: "#/components/schemas/Error"
 
   schemas:
+    ClickLogBatch:
+      type: object
+      additionalProperties: false
+      required: [events]
+      properties:
+        events:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/ClickEvent"
+
+    ClickEvent:
+      type: object
+      additionalProperties: false
+      required: [type, label, page, at]
+      properties:
+        type:
+          type: string
+          enum: [link, button, tab]
+        label:
+          type: string
+          maxLength: 80
+          description: aria-label, else visible text. Truncated to 80 characters.
+        href:
+          type: [string, "null"]
+          maxLength: 300
+          description: Internal path + query, or the origin of an external link. No hash.
+        page:
+          type: string
+          maxLength: 200
+          description: Pathname where the click happened (no query).
+        disabled:
+          type: boolean
+        at:
+          type: string
+          format: date-time
+          description: Client clock.
+
     Error:
       type: object
       required: [error]
