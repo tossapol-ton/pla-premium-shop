@@ -14,6 +14,7 @@ const prisma = new PrismaClient();
 
 async function main(): Promise<void> {
   await prisma.$transaction([
+    prisma.clickLog.deleteMany(),
     prisma.orderItem.deleteMany(),
     prisma.order.deleteMany(),
     prisma.product.deleteMany(),

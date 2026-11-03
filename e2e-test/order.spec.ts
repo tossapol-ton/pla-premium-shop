@@ -1,5 +1,6 @@
+import { PrismaClient } from "@prisma/client";
 import { expect, test, type Page } from "@playwright/test";
-import { E2E_ADMIN_PASSWORD } from "../playwright.config";
+import { E2E_ADMIN_PASSWORD, E2E_DATABASE_URL_RESOLVED } from "../playwright.config";
 
 // ---------- random test data ----------
 const FIRST_NAMES = ["สมชาย", "สมหญิง", "วิภา", "ธนา", "กมล", "ปรีชา", "อรุณี", "ศักดิ์ชัย"];
@@ -255,4 +256,91 @@ test("admin pages and admin API need a login", async ({ page, request }) => {
   expect((await request.get("/api/orders")).status()).toBe(200);
   expect((await request.delete("/api/admin/session")).status()).toBe(204);
   expect((await request.get("/api/orders")).status()).toBe(401);
+});
+
+// ---------------------------------------------------------------------------
+// Click log (instrumentation-client.ts -> POST /api/log -> ClickLog table)
+
+test.describe("click log", () => {
+  const db = new PrismaClient({ datasources: { db: { url: E2E_DATABASE_URL_RESOLVED } } });
+  test.afterAll(async () => {
+    await db.$disconnect();
+  });
+
+  test("every button and link click is logged (console + database), never typed text", async ({ page }) => {
+    const startedAt = new Date(); // only count rows created by THIS test (earlier tests also click)
+    const SECRET_NAME = "ชื่อลับ-SECRET-9137";
+
+    const consoleClicks: string[] = [];
+    page.on("console", (message) => {
+      if (message.type() === "debug" && message.text().startsWith("[click]")) consoleClicks.push(message.text());
+    });
+    // (Playwright cannot read sendBeacon Blob bodies, so check what the server stored.)
+    const stored = () => db.clickLog.findMany({ where: { createdAt: { gte: startedAt } }, orderBy: { id: "asc" } });
+
+    // link (header category), button (buy on a card), button (close drawer), button (header bag)
+    await page.goto("/");
+    await card(page, "notebook").getByRole("button", { name: "ซื้อ ชุดสมุดโน้ตและปากกา" }).click();
+    await expect(bag(page)).toBeVisible();
+    await bag(page).getByRole("button", { name: "ปิดตะกร้า" }).click();
+    await visibleTestId(page, "cart-button").click();
+    await expect(bag(page)).toBeVisible();
+    await page.keyboard.press("Escape"); // keyboard, not a click: must not be logged
+    await expect(bag(page)).toHaveCount(0);
+    await page.getByRole("navigation", { name: "หมวดสินค้า" }).getByRole("link", { name: "เสื้อผ้า" }).click();
+    await expect(page).toHaveURL(/cat=/);
+
+    // typing in a form field must never be logged; the submit button click is
+    await page.goto("/checkout");
+    await page.getByRole("textbox", { name: "ชื่อผู้รับ", exact: true }).fill(SECRET_NAME);
+    await page.getByRole("button", { name: /^ยืนยันคำสั่งซื้อ/ }).click();
+    await expect(page.getByText("กรุณากรอกเบอร์โทรศัพท์").first()).toBeVisible();
+
+    // tab + submit buttons in admin (password must never be logged)
+    await page.goto("/admin/login");
+    await page.getByLabel("รหัสผ่าน").fill(E2E_ADMIN_PASSWORD);
+    await page.getByRole("button", { name: "เข้าสู่ระบบ" }).click();
+    await expect(page).toHaveURL(/\/admin$/);
+    await page.getByRole("tab", { name: /^คำสั่งซื้อ/ }).click();
+    await page.getByRole("button", { name: "ออกจากระบบ" }).click();
+    await expect(page).toHaveURL(/\/admin\/login$/);
+
+    // The queue flushes after ~1s (or on pagehide): wait until the last click is stored.
+    await expect
+      .poll(async () => (await stored()).some((r) => r.label === "ออกจากระบบ"), { timeout: 15_000 })
+      .toBe(true);
+    const rows = await stored();
+    const wasLogged = (match: (r: (typeof rows)[number]) => boolean) => rows.some(match);
+
+    expect(wasLogged((r) => r.type === "link" && r.label === "เสื้อผ้า" && r.page === "/" && /^\/\?cat=/.test(r.href ?? ""))).toBe(true);
+    expect(wasLogged((r) => r.type === "button" && r.label === "ซื้อ ชุดสมุดโน้ตและปากกา" && r.page === "/")).toBe(true);
+    expect(wasLogged((r) => r.type === "button" && r.label === "ปิดตะกร้า")).toBe(true);
+    expect(wasLogged((r) => r.type === "button" && r.label.startsWith("ตะกร้าสินค้า"))).toBe(true);
+    expect(wasLogged((r) => r.type === "button" && r.label.startsWith("ยืนยันคำสั่งซื้อ") && r.page === "/checkout")).toBe(true);
+    expect(wasLogged((r) => r.type === "button" && r.label === "เข้าสู่ระบบ" && r.page === "/admin/login")).toBe(true);
+    expect(wasLogged((r) => r.type === "tab" && r.label.startsWith("คำสั่งซื้อ") && r.page === "/admin")).toBe(true);
+    // Only clicks are logged (Escape and typing are not); no hash is ever stored.
+    expect(rows.every((r) => !(r.href ?? "").includes("#"))).toBe(true);
+    expect(rows.filter((r) => r.label === "ปิดตะกร้า").length).toBe(1);
+    // The console shows every click that was stored.
+    expect(consoleClicks.length).toBe(rows.length);
+    // Privacy: nothing the user typed was stored.
+    expect(JSON.stringify(rows)).not.toContain(SECRET_NAME);
+    expect(JSON.stringify(rows)).not.toContain(E2E_ADMIN_PASSWORD);
+  });
+
+  test("POST /api/log validates input and truncates long text", async ({ request }) => {
+    const marker = `TRUNC-${Date.now()}`;
+    const event = { type: "button", label: `${marker}-${"x".repeat(200)}`, href: null, page: "/x", at: new Date().toISOString() };
+
+    expect((await request.post("/api/log", { data: { events: [event] } })).status()).toBe(204);
+    const row = await db.clickLog.findFirst({ where: { label: { startsWith: marker } } });
+    expect(row?.label.length).toBe(80);
+
+    expect((await request.post("/api/log", { data: { events: [] } })).status()).toBe(400);
+    expect((await request.post("/api/log", { data: { events: [{ ...event, type: "hover" }] } })).status()).toBe(400);
+    expect((await request.post("/api/log", { data: { events: [{ ...event, extra: "no" }] } })).status()).toBe(400);
+    expect((await request.post("/api/log", { data: { events: Array(21).fill(event) } })).status()).toBe(400);
+    expect((await request.post("/api/log", { data: "not json", headers: { "content-type": "text/plain" } })).status()).toBe(400);
+  });
 });

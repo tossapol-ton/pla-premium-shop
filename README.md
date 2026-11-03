@@ -101,6 +101,30 @@ Other checks: `npm run build`, `npm run lint`, `npx tsc --noEmit`.
   session cookie (8 hours). `proxy.ts` redirects signed-out visitors from `/admin`; the admin API
   routes and the admin page also check the session themselves.
 
+## Click log (ทุกปุ่ม ทุกลิงก์)
+
+ทุกการคลิก **ปุ่ม ลิงก์ และแท็บ** ถูกบันทึกอัตโนมัติจากไฟล์เดียว `instrumentation-client.ts`
+(ปุ่มหรือลิงก์ที่เพิ่มในอนาคตถูก log ด้วยโดยไม่ต้องแก้โค้ด)
+
+- **Console เบราว์เซอร์:** เปิด DevTools → Console → เปิดระดับ **Verbose** จะเห็นบรรทัด `[click] {...}`
+- **ฐานข้อมูล:** ส่งเป็นชุดไป `POST /api/log` แล้วเก็บในตาราง `ClickLog` (ส่งทุก ~1 วินาที และตอนออกจากหน้า) และ log ฝั่งเซิร์ฟเวอร์ปรากฏใน Logs ของ Vercel ด้วย
+
+| เก็บ | ไม่เก็บ |
+|---|---|
+| ชนิด (link / button / tab), ข้อความหรือ aria-label บนปุ่ม (ไม่เกิน 80 ตัวอักษร), ปลายทางของลิงก์ (ลิงก์ภายในเก็บ path + query ไม่เก็บ hash, ลิงก์ภายนอกเก็บเฉพาะโดเมน), หน้าที่กดอยู่, เวลา | สิ่งที่ผู้ใช้พิมพ์ (ชื่อ เบอร์ ที่อยู่ รหัสผ่าน), IP, User-Agent, session id, ตัวตนผู้ใช้, การเลื่อนหน้า |
+
+ดูข้อมูลใน Supabase → SQL Editor:
+
+```sql
+select page, label, count(*) as clicks
+from "ClickLog"
+group by 1, 2
+order by clicks desc
+limit 20;
+```
+
+ข้อจำกัด: `POST /api/log` เปิดสาธารณะและ**ยังไม่มี rate limit** (จำกัดได้แค่ 20 รายการต่อครั้งและขนาด 8 KB) · **ยังไม่ลบ log เก่า** ตารางจะโตเรื่อยๆ ควรตั้งนโยบายเก็บรักษา (retention) ก่อนใช้จริง และให้ฝ่าย PDPA ตรวจสอบก่อนเก็บข้อมูลการใช้งานของลูกค้าจริง
+
 ## What is still mock / not done
 
 | Area | Status |

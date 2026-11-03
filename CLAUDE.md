@@ -51,6 +51,7 @@ app/
   api/admin/session/route.ts  POST login (sets cookie), DELETE logout
   api/products/...            GET list, GET/PUT one
   api/orders/route.ts         GET list, POST create
+  api/log/route.ts            POST click log batch (public, no auth; stores into ClickLog)
 components/                   shared UI: SiteHeader (frosted, categories, no Admin link), SiteFooter,
                               MobileMenu, CartButton, BagDrawer (<dialog>), BuyButton, ProductCard,
                               ProductImage, icons.tsx, ui.ts class recipes
@@ -62,6 +63,7 @@ lib/
                               (addToBag = add + open drawer)
   admin-auth.ts               signed session cookie for admin (ADMIN_PASSWORD)
   admin-actions.ts            Server Actions: loginAction / logoutAction (used by the UI)
+instrumentation-client.ts     click log for EVERY button/link (document click listener -> console.debug + POST /api/log)
 proxy.ts                      redirects signed-out visitors from /admin (Next 16 "proxy" = old middleware)
 public/products/              product illustrations (SVG, from the Claude Design prototype)
 docs/openapi.yml              API contract — update it FIRST when changing an endpoint
@@ -107,5 +109,10 @@ e2e-test/                     Playwright specs
   after login would reuse it (bug fixed 2026-11). The shop has no link to `/admin` at all;
   if you add one, make it a plain `<a>`.
   Prefetching only happens in production, which is why e2e runs on `next build && next start`.
+- **Click log:** logging lives ONLY in `instrumentation-client.ts` (one capture-phase listener on
+  `document`). Do not add per-button `onClick` logging. Never log typed text, IP, user agent or
+  session ids, never call `preventDefault`/`stopPropagation` there, and never throw. The
+  `ClickLog` table has RLS enabled; `prisma db seed` wipes it. Playwright cannot read
+  `sendBeacon` bodies, so tests assert on rows in the e2e database.
 - **Migrations:** create with `npx prisma migrate dev --name <change>`; never edit an applied
   migration. Supabase-only SQL (e.g. RLS) goes in a hand-written migration.
